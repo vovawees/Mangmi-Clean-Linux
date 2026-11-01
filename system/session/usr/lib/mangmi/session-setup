@@ -17,7 +17,7 @@ tools="$roms/mangmi"
 mkdir -p "$tools"
 stamp="$tools/.mangmi-generated"
 if [[ ! -f $stamp || /usr/share/mangmi/es-de/tools.list -nt $stamp ]]; then
-  find "$tools" -maxdepth 1 -name '*.sh' -exec grep -l '^# mangmi-generated' {} + 2>/dev/null | xargs -r rm -f
+  find "$tools" -maxdepth 1 -name '*.sh' -exec grep -lZ '^# mangmi-generated' {} + 2>/dev/null | xargs -0 -r rm -f
   while IFS='|' read -r title cmd; do
     [[ -z $title || $title == \#* ]] && continue
     printf '#!/bin/bash\n# mangmi-generated\n%s\n' "$cmd" >"$tools/$title.sh"

@@ -1,3 +1,4 @@
+# shellcheck shell=bash disable=SC2154
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Shared by the *-bin packages: unpack an upstream AppImage into /opt so it
 # starts without FUSE and without decompressing on every launch.

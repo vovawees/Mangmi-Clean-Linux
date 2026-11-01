@@ -83,6 +83,19 @@ write_entry mangmi.conf "$name" mangmi-1
 write_entry mangmi-safe.conf "$name (safe mode: text console)" mangmi-2 \
   "systemd.unit=multi-user.target systemd.mask=mangmi-session@.service loglevel=6"
 
+# With a pinned model, keep one entry per other board revision in the OpenABL
+# menu, so a card prepared for the wrong revision can still be booted.
+rm -f "$entries"/mangmi-mq*.conf
+if [[ -n $model ]]; then
+  pinned=$dt_line
+  for m in $MODELS; do
+    [[ $m == "$model" || ! -f $ESP/dtbs/qcom/sm6115-mangmi-air-x-$m.dtb ]] && continue
+    dt_line="devicetree /dtbs/qcom/sm6115-mangmi-air-x-$m.dtb"
+    write_entry "mangmi-$m.conf" "$name (${m^^} board)" "mangmi-3-$m"
+  done
+  dt_line=$pinned
+fi
+
 tmp=$ESP/loader/.loader.conf.tmp
 printf 'default mangmi.conf\n' >"$tmp"
 mv -f "$tmp" "$ESP/loader/loader.conf"

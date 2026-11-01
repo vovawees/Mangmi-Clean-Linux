@@ -53,8 +53,10 @@ fetch() {
     return 0
   fi
   log "download ${url}"
-  curl -fL --retry 5 --retry-delay 3 --retry-all-errors -C - -o "${dest}.part" "${url}" \
-    || curl -fL --retry 5 --retry-delay 3 --retry-all-errors -o "${dest}.part" "${url}"
+  local quiet=(--no-progress-meter)
+  [[ -t 2 ]] && quiet=()
+  curl -fL "${quiet[@]}" --retry 5 --retry-delay 3 --retry-all-errors -C - -o "${dest}.part" "${url}" \
+    || curl -fL "${quiet[@]}" --retry 5 --retry-delay 3 --retry-all-errors -o "${dest}.part" "${url}"
   mv -f "${dest}.part" "${dest}"
   if [[ -n "${sum}" ]]; then
     echo "${sum}  ${dest}" | sha256sum -c --status || die "sha256 mismatch: ${dest}"

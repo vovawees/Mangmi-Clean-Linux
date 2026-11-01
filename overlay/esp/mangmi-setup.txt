@@ -1,0 +1,30 @@
+# Mangmi Clean Linux - first boot settings / настройки первого запуска
+#
+# Edit this file on any PC before the first boot (the card's MANGMI_BOOT
+# partition). Empty values keep the defaults. Passwords are erased from this
+# file after they have been applied.
+#
+# Отредактируйте файл на компьютере до первого включения (раздел MANGMI_BOOT
+# на карте). Пустые значения = настройки по умолчанию. Пароли стираются из
+# файла сразу после применения.
+
+# Wi-Fi network / сеть Wi-Fi
+WIFI_SSID=
+WIFI_PASSWORD=
+
+# New password for the user "mangmi" (default: mangmi)
+# Новый пароль пользователя mangmi (по умолчанию: mangmi)
+PASSWORD=
+
+# Board revision / ревизия платы: mq65 | mq66 | mq66b | auto
+# (auto = the device model selected in the OpenABL menu)
+MODEL=
+
+# Examples: Europe/Moscow, Europe/Berlin, Asia/Almaty, America/New_York
+TIMEZONE=
+# Examples: ru_RU.UTF-8, en_US.UTF-8, uk_UA.UTF-8, de_DE.UTF-8
+LOCALE=
+HOSTNAME=
+
+# Enable the SSH server (yes/no) / включить SSH-сервер
+SSH=no

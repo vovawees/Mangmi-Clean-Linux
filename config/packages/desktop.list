@@ -1,0 +1,34 @@
+# Desktop mode: KDE Plasma (Wayland) with touch-friendly defaults.
+plasma-desktop
+kwin
+plasma-nm
+plasma-pa
+powerdevil
+bluedevil
+kscreen
+plasma-keyboard
+plasma-systemmonitor
+kinfocenter
+systemsettings
+kde-gtk-config
+breeze-gtk
+xdg-desktop-portal-kde
+xdg-user-dirs
+qt6-multimedia-ffmpeg
+
+# --- apps -----------------------------------------------------------------------------
+konsole
+dolphin
+ark
+kate
+gwenview
+spectacle
+tesseract-data-eng
+tesseract-data-rus
+kio-extras
+ffmpegthumbs
+firefox
+flatpak
+flatpak-kcm
+discover
+noto-fonts-cjk

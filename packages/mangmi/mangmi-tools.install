@@ -1,4 +1,4 @@
-_units="mangmi-hwd.service mangmi-firstboot.service"
+_units="mangmi-hwd.service mangmi-firstboot.service mangmi-pacman-init.service"
 
 post_install() {
   systemctl preset $_units >/dev/null 2>&1 || :

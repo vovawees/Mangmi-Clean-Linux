@@ -8,6 +8,7 @@
 set -u
 set -a
 for f in /usr/lib/environment.d/*.conf /etc/environment.d/*.conf; do
+  # shellcheck disable=SC1090
   [[ -r $f ]] && . "$f"
 done
 set +a

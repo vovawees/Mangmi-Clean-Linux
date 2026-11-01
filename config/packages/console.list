@@ -1,0 +1,5 @@
+# Console mode: sway kiosk + ES-DE frontend.
+mangmi-session
+es-de-bin
+xorg-xwayland
+qt6-wayland

@@ -1,0 +1,42 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-update - update everything in one go: system packages (kernel, device
+# support, emulators, RetroArch cores from the [mangmi] repository, Arch Linux
+# ARM packages) and Flatpak apps.
+#
+# As a normal user the privileged part runs as mangmi-update.service (allowed
+# for the local user by polkit), so it also works from the ES-DE tools menu
+# with nothing but a gamepad.
+set -uo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+  echo "== Mangmi Clean Linux: system update =="
+  journalctl -f -n0 -o cat -u mangmi-update.service 2>/dev/null & jpid=$!
+  systemctl start mangmi-update.service; rc=$?
+  sleep 1; kill "$jpid" 2>/dev/null; wait "$jpid" 2>/dev/null
+  if command -v flatpak >/dev/null; then
+    flatpak update --user -y --noninteractive 2>/dev/null || :
+  fi
+  if ((rc == 0)); then
+    echo "== Done. Restart to use a new kernel if one was installed. =="
+  else
+    echo "== Update failed - see: journalctl -u mangmi-update.service =="
+  fi
+  if [[ -t 0 ]]; then read -r -t 20 -p "Press Enter to close " _ || :; echo; else sleep 5; fi
+  exit "$rc"
+fi
+
+set -e
+if [[ ! -f /etc/pacman.d/gnupg/trustdb.gpg ]]; then
+  pacman-key --init
+  pacman-key --populate archlinuxarm
+fi
+# new signing keys first, then everything else
+pacman -Sy --noconfirm --needed archlinuxarm-keyring
+pacman -Su --noconfirm
+if command -v flatpak >/dev/null; then
+  flatpak update --system -y --noninteractive || :
+fi
+# keep only the installed package versions in the cache
+pacman -Sc --noconfirm >/dev/null || :
+echo "System is up to date."

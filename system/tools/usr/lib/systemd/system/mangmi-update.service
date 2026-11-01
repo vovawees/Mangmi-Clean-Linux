@@ -1,0 +1,11 @@
+[Unit]
+Description=Mangmi Clean Linux system update
+Documentation=https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/FAQ.md
+Wants=network-online.target
+After=network-online.target mangmi-pacman-init.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mangmi-update
+TimeoutStartSec=infinity
+Nice=5

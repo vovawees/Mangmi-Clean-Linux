@@ -1,0 +1,37 @@
+# Emulators. Standalone builds where they beat libretro on the Snapdragon 662,
+# libretro cores for everything else (all launched through ES-DE or RetroArch).
+mangmi-emulators
+retroarch
+retroarch-assets-ozone
+libretro-core-info
+libretro-shaders-slang
+
+# --- libretro cores from Arch Linux ARM ---------------------------------------------
+libretro-snes9x
+libretro-nestopia
+libretro-mesen
+libretro-mesen-s
+libretro-gambatte
+libretro-sameboy
+libretro-mgba
+libretro-genesis-plus-gx
+libretro-picodrive
+libretro-pcsx-rearmed
+libretro-beetle-pce-fast
+libretro-beetle-supergrafx
+libretro-mupen64plus-next
+libretro-parallel-n64
+libretro-flycast
+libretro-melonds
+libretro-desmume
+libretro-scummvm
+
+# --- extra cores (libretro buildbot, aarch64) ---------------------------------------
+mangmi-cores
+
+# --- standalone emulators -------------------------------------------------------------
+ppsspp
+ppsspp-assets
+duckstation-bin
+melonds-bin
+armsx2-bin

@@ -21,6 +21,14 @@ if [[ "$(uname -m)" != "aarch64" && -z "${CROSS_COMPILE:-}" && "${DTBS_ONLY:-0}"
     || die "not on aarch64: install aarch64-linux-gnu-gcc or set CROSS_COMPILE"
 fi
 [[ -n "${CROSS_COMPILE:-}" ]] && export CROSS_COMPILE
+export KBUILD_BUILD_USER=mangmi KBUILD_BUILD_HOST=clean-linux
+# USE_CCACHE=1: compiler cache in ${CACHE_DIR}/ccache (CI keeps it between runs)
+kcc=()
+if [[ "${USE_CCACHE:-0}" == 1 ]] && command -v ccache >/dev/null; then
+  export CCACHE_DIR="${CCACHE_DIR:-${CACHE_DIR}/ccache}" CCACHE_MAXSIZE="${CCACHE_MAXSIZE:-2G}"
+  export CCACHE_SLOPPINESS=time_macros,include_file_mtime,include_file_ctime CCACHE_COMPILERCHECK=content
+  kcc=(CC="ccache ${CROSS_COMPILE:-}gcc")
+fi
 
 # 1. sources ---------------------------------------------------------------------
 fetch "${KERNEL_MIRROR}/linux-${KERNEL_BASE}.tar.xz" "${CACHE_DIR}/linux-${KERNEL_BASE}.tar.xz" "${KERNEL_BASE_SHA256}"
@@ -67,7 +75,7 @@ cp "${ROCKNIX_DIR}/projects/ROCKNIX/devices/SM6115/linux/linux.aarch64.conf" "${
 "${KSRC}/scripts/config" --file "${KSRC}/.config" \
   --set-str EXTRA_FIRMWARE "regulatory.db regulatory.db.p7s" \
   --set-str EXTRA_FIRMWARE_DIR "external-firmware"
-make -C "${KSRC}" -s olddefconfig
+make -C "${KSRC}" "${kcc[@]}" -s olddefconfig
 
 # Every explicit request in our fragments must survive olddefconfig.
 bad=0
@@ -93,7 +101,7 @@ ok "config: $(grep -c '=y' "${KSRC}/.config") built-in, $(grep -c '=m' "${KSRC}/
 
 # 4. build -----------------------------------------------------------------------------
 read -r -a dtbs <<<"${DTBS}"
-mk() { make -C "${KSRC}" -j"$(nproc_build)" DTC_FLAGS=-@ "$@"; }
+mk() { make -C "${KSRC}" "${kcc[@]}" -j"$(nproc_build)" DTC_FLAGS=-@ "$@"; }
 
 if [[ "${DTBS_ONLY:-0}" == 1 ]]; then
   log "building device trees only"
@@ -123,5 +131,6 @@ if [[ "${DTBS_ONLY:-0}" != 1 ]]; then
   rm -f "${KOUT}/modules/lib/modules/${krel}/"{build,source}
   "${MCL_ROOT}/scripts/kernel-headers.sh" "${KSRC}" "${KOUT}/headers/usr/lib/modules/${krel}/build"
   ok "kernel ${krel}: $(du -h "${KOUT}/Image" | cut -f1) Image, $(find "${KOUT}/modules" -name '*.ko*' | wc -l) modules"
+  ((${#kcc[@]})) && ccache -s 2>/dev/null | grep -Ei 'hit|miss' | head -3 >&2 || true
 fi
 ok "device trees: $(cd "${KOUT}/dtbs" && find . -name '*.dtb' | sort | tr '\n' ' ')"

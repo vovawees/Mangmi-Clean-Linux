@@ -4,7 +4,7 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")/.." && pwd)
 t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
 mkdir -p "$t/esp/dtbs/qcom" "$t/mod/7.2.15-mangmi" "$t/conf"
-touch "$t/esp/Image-mangmi" "$t/esp/dtbs/qcom/sm6115-mangmi-air-x-mq66.dtb"
+touch "$t/esp/Image-mangmi" "$t/esp/dtbs/qcom/sm6115-mangmi-air-x-mq66.dtb" "$t/esp/dtbs/qcom/sm6115-mangmi-air-x-mq66b.dtb"
 echo linux-mangmi >"$t/mod/7.2.15-mangmi/pkgbase"
 echo "root=PARTUUID=12345678-02 rw rootwait quiet" >"$t/cmdline"
 export ESP=$t/esp MANGMI_CONF=$t/conf CMDLINE_FILE=$t/cmdline MODULES=$t/mod
@@ -18,11 +18,17 @@ grep -q "systemd.unit=multi-user.target" "$t/esp/loader/entries/mangmi-safe.conf
 grep -qx "default mangmi.conf" "$t/esp/loader/loader.conf"
 "$here/system/tools/usr/bin/mangmi-boot-update" --model mq66
 grep -qx "devicetree /dtbs/qcom/sm6115-mangmi-air-x-mq66.dtb" "$e"
+grep -qx "devicetree /dtbs/qcom/sm6115-mangmi-air-x-mq66b.dtb" "$t/esp/loader/entries/mangmi-mq66b.conf"
+grep -q "(MQ66B board)" "$t/esp/loader/entries/mangmi-mq66b.conf"
+[[ ! -e $t/esp/loader/entries/mangmi-mq66.conf && ! -e $t/esp/loader/entries/mangmi-mq65.conf ]]
 if "$here/system/tools/usr/bin/mangmi-boot-update" --model mq65 2>/dev/null; then
   echo "expected failure for a missing dtb" >&2; exit 1
 fi
 grep -qx mq66 "$t/conf/model"   # failed pin keeps the old one
 "$here/system/tools/usr/bin/mangmi-boot-update" --model auto
 ! grep -q devicetree "$e"
-[[ -z $(ls -A "$t/esp/loader/entries" | grep -v '\.conf$') ]]
+[[ ! -e $t/esp/loader/entries/mangmi-mq66b.conf ]]
+for f in "$t"/esp/loader/entries/* "$t"/esp/loader/entries/.[!.]*; do
+  [[ -e $f && $f != *.conf ]] && { echo "stray file $f" >&2; exit 1; }
+done
 echo "boot-update: ok"

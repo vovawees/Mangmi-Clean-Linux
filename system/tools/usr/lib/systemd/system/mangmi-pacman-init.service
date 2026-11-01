@@ -1,0 +1,15 @@
+[Unit]
+Description=Mangmi Clean Linux: initialise the pacman keyring
+ConditionPathExists=!/etc/pacman.d/gnupg/trustdb.gpg
+After=local-fs.target time-set.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pacman-key --init
+ExecStart=/usr/bin/pacman-key --populate archlinuxarm
+RemainAfterExit=yes
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

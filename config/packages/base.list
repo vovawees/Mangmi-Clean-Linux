@@ -1,0 +1,78 @@
+# Mangmi Clean Linux - base system (always installed).
+# One package per line; '#' starts a comment. Virtual dependencies are pinned
+# by listing the provider explicitly (pacman never has to guess).
+
+# --- core ---------------------------------------------------------------------
+base
+archlinuxarm-keyring
+dbus-broker-units
+sudo
+polkit
+linux-mangmi
+mangmi-tools
+mangmi-firmware
+linux-firmware-qcom
+linux-firmware-atheros
+wireless-regdb
+
+# --- performance ----------------------------------------------------------------
+zram-generator
+scx-scheds
+gamemode
+
+# --- network / bluetooth --------------------------------------------------------
+networkmanager
+iwd
+openssh
+avahi
+nss-mdns
+bluez
+bluez-utils
+iptables
+
+# --- audio ------------------------------------------------------------------------
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+alsa-utils
+alsa-ucm-conf
+rtkit
+
+# --- graphics (Mesa freedreno / turnip Vulkan) ------------------------------------
+mesa
+vulkan-freedreno
+vulkan-icd-loader
+vulkan-tools
+mesa-utils
+sdl2-compat
+sdl3
+libdecor
+
+# --- storage ------------------------------------------------------------------------
+dosfstools
+exfatprogs
+ntfs-3g
+f2fs-tools
+cloud-guest-utils
+udisks2
+
+# --- fonts ------------------------------------------------------------------------------
+noto-fonts
+noto-fonts-emoji
+ttf-dejavu
+terminus-font
+
+# --- tools ------------------------------------------------------------------------------
+nano
+less
+htop
+btop
+fastfetch
+bash-completion
+wget
+rsync
+unzip
+zip
+7zip

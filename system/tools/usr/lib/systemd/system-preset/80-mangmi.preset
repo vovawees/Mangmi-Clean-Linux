@@ -1,6 +1,7 @@
 # Mangmi Clean Linux services
 enable mangmi-hwd.service
 enable mangmi-firstboot.service
+enable mangmi-pacman-init.service
 enable inputplumber.service
 enable pd-mapper.service
 enable rmtfs.service

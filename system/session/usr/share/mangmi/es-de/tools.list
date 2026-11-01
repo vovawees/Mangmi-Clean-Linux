@@ -15,3 +15,4 @@ Stick Lights - Breath|exec mangmi-ctl led breath
 Stick Lights - Static|exec mangmi-ctl led static
 Stick Lights - Temperature|exec mangmi-ctl led thermal
 Stick Lights - Off|exec mangmi-ctl led off
+System Update|exec foot -e mangmi-update

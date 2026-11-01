@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=System Update
+Name[ru]=Обновление системы
+Comment=Update the system, emulators and apps
+Comment[ru]=Обновить систему, эмуляторы и приложения
+Exec=mangmi-update
+Icon=system-software-update
+Terminal=true
+Categories=System;Settings;
