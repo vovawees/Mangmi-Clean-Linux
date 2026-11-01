@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Mangmi Clean Linux: MQ65 (TD4310 panel) board fixes, appended to
+ * sm6115-mangmi-air-x-mq65.dts by scripts/build-kernel.sh.
+ *
+ * Serial engine 2 runs the I2C protocol on this board: a real MQ65 reports
+ * "geni_spi 4a88000.spi: Invalid proto 3" for the SPI controller the MQ66
+ * touch panel uses. Keep SPI off and use the I2C controller of the same
+ * engine for the TD4310's integrated Synaptics (RMI4) touch controller
+ * (experimental: the usual TD4310 address, interrupt and reset lines of
+ * the MQ66 touch panel connector).
+ */
+
+&spi2 {
+	status = "disabled";
+};
+
+&i2c2 {
+	clock-frequency = <400000>;
+	status = "okay";
+
+	touchscreen@20 {
+		compatible = "syna,rmi4-i2c";
+		reg = <0x20>;
+		interrupts-extended = <&tlmm 69 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&tlmm 68 GPIO_ACTIVE_LOW>;
+		pinctrl-0 = <&ts_irq_default>;
+		pinctrl-names = "default";
+		syna,startup-delay-ms = <100>;
+		syna,reset-delay-ms = <200>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rmi4-f01@1 {
+			reg = <0x01>;
+			syna,nosleep-mode = <1>;
+		};
+
+		rmi4-f12@12 {
+			reg = <0x12>;
+			syna,sensor-type = <1>;
+		};
+	};
+};

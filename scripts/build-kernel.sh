@@ -42,7 +42,8 @@ ROCKNIX_DIR="$("${MCL_ROOT}/scripts/fetch-rocknix.sh" | tail -n1)"
 
 # 2. fresh, patched tree ----------------------------------------------------------
 own_patches_hash() {
-  find "${MCL_ROOT}/kernel/patches" -name '*.patch' -type f -print0 2>/dev/null | sort -z | xargs -0 -r cat | sha256sum | cut -c1-12
+  find "${MCL_ROOT}/kernel/patches" "${MCL_ROOT}/kernel/dts" \( -name '*.patch' -o -name '*.dtsi' \) -type f -print0 2>/dev/null \
+    | sort -z | xargs -0 -r cat | sha256sum | cut -c1-12
 }
 stamp="${KERNEL_STABLE}-${ROCKNIX_COMMIT:0:12}-$(own_patches_hash)-$(echo "${KERNEL_PATCH_EXCLUDE}" | sha256sum | cut -c1-8)"
 if [[ ! -f "${KSRC}/.mangmi-stamp" || "$(cat "${KSRC}/.mangmi-stamp")" != "${stamp}" ]]; then
@@ -58,6 +59,15 @@ if [[ ! -f "${KSRC}/.mangmi-stamp" || "$(cat "${KSRC}/.mangmi-stamp")" != "${sta
     "${MCL_ROOT}/scripts/kernel-apply-patches.sh" "${KSRC}" "${ROCKNIX_DIR}" "${MCL_ROOT}/kernel/patches"
   log "adding SM6115 device trees"
   cp -a "${ROCKNIX_DIR}/projects/ROCKNIX/devices/SM6115/linux/dts/." "${KSRC}/arch/arm64/boot/dts/"
+  # Our board fixes: kernel/dts/qcom/<board>-fixes.dtsi goes at the end of <board>.dts.
+  for f in "${MCL_ROOT}"/kernel/dts/qcom/*-fixes.dtsi; do
+    [[ -f "${f}" ]] || continue
+    b="${KSRC}/arch/arm64/boot/dts/qcom/$(basename "${f%-fixes.dtsi}").dts"
+    [[ -f "${b}" ]] || die "${f##*/}: ${b##*/} not found"
+    cp "${f}" "${KSRC}/arch/arm64/boot/dts/qcom/"
+    printf '\n#include "%s"\n' "${f##*/}" >>"${b}"
+    log "device tree fixes: ${f##*/}"
+  done
   mkdir -p "${KSRC}/external-firmware"
   tar -C "${WORK_DIR}/kernel" -xf "${CACHE_DIR}/wireless-regdb-${REGDB_VERSION}.tar.xz"
   cp "${WORK_DIR}/kernel/wireless-regdb-${REGDB_VERSION}"/regulatory.db{,.p7s} "${KSRC}/external-firmware/"
