@@ -1,8 +1,8 @@
-# name ES-DE looks for in $PATH [: real binary]
+# name ES-DE looks for in $PATH [: real binary[,fallback...]]
 retroarch
-ppsspp
-PPSSPPSDL:ppsspp
-PPSSPPQt:ppsspp-qt
+ppsspp:ppsspp,PPSSPPSDL,PPSSPPQt
+PPSSPPSDL
+PPSSPPQt
 duckstation-qt
 pcsx2-qt:armsx2
 melonDS

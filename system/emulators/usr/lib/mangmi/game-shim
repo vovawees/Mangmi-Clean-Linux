@@ -4,14 +4,23 @@
 # ES-DE finds emulators through $PATH, the shims come first, so every game
 # goes through mangmi-run (games.slice, big cores, performance profile).
 # Only emulators that are actually installed get a shim.
+#
+# /usr/share/mangmi/emulators.list:  name[:binary[,binary...]]
+# The first binary found in the system $PATH is used (default: name itself).
 set -u
 wrap="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mangmi/wrap"
 rm -rf "$wrap"
 mkdir -p "$wrap"
 syspath=$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '/mangmi/wrap$' | paste -sd:)
-while IFS=: read -r name target; do
+while IFS=: read -r name targets; do
   [[ -z $name || $name == \#* ]] && continue
-  real=$(PATH=$syspath command -v "${target:-$name}") || continue
+  real=""
+  IFS=, read -ra cands <<<"${targets:-$name}"
+  for c in "${cands[@]}"; do
+    real=$(PATH=$syspath command -v "$c") && break
+    real=""
+  done
+  [[ -n $real ]] || continue
   printf '#!/bin/sh\nexec mangmi-run --auto -- %q "$@"\n' "$real" >"$wrap/$name"
   chmod +x "$wrap/$name"
 done </usr/share/mangmi/emulators.list

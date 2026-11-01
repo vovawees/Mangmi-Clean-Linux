@@ -1,4 +1,15 @@
+# Mangmi Clean Linux user services (applied by `systemctl --global preset-all`).
+# Only what the handheld needs at login starts eagerly; everything else stays
+# off and is started on demand through D-Bus or socket activation
+# (gamemoded, p11-kit, foot-server, kde-baloo, filter-chain ...).
 enable mangmi-hotkeyd.service
 enable pipewire.socket
 enable pipewire-pulse.socket
+enable pipewire.service
+enable pipewire-pulse.service
 enable wireplumber.service
+enable xdg-user-dirs.service
+enable mpris-proxy.service
+enable systemd-tmpfiles-setup.service
+enable systemd-tmpfiles-clean.timer
+disable *
