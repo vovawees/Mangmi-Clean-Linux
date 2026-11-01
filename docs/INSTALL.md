@@ -147,7 +147,9 @@ microSD с **тем же самым** образом — у разделов с�
 - Способы копирования: по Wi-Fi через SFTP (`SSH=yes` в `mangmi-setup.txt`, затем в WinSCP/FileZilla/Dolphin
   адрес `sftp://mangmi@<ip-консоли>`), с флешки в режиме «ПК» (файловый менеджер Dolphin),
   или прямо с карты на компьютере с Linux (раздел MANGMI_ROOT, папка `home/mangmi/ROMs`).
-- Скачать бесплатные homebrew-игры в один клик: ES-DE → *Mangmi Air X* → **ROM Store** (см. [EMULATORS.md](EMULATORS.md)).
+- **Без проводов и SFTP:** ES-DE → *Mangmi Air X* → **Game Store** — бесплатные игры в один клик, а также ваши
+  ROM с компьютера: запустите на ПК в папке с играми `python -m http.server 8000` и добавьте в магазине
+  папку `http://<IP-компьютера>:8000/` (см. [EMULATORS.md](EMULATORS.md#магазин-игр-game-store)).
 
 ## Обновление системы
 

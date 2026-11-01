@@ -1,7 +1,8 @@
 # Maintainer: Vovawe <vovawees@gmail.com>
 # Mangmi Clean Linux system integration, built straight from this repository:
 #   mangmi-tools      hardware daemon, hotkeys, device configs, boot entries, tuning
-#   mangmi-session    hybrid session: console mode (sway + ES-DE) / desktop mode (Plasma)
+#   mangmi-session    hybrid session: console mode (sway + ES-DE) / desktop mode (Plasma),
+#                     game store (mangmi-store)
 #   mangmi-emulators  RetroArch/ES-DE defaults, launcher shims, controller profile
 # Files come from system/<package>/ (a tree mirroring /) and mangmi/ (Python).
 
@@ -85,13 +86,17 @@ package_mangmi-tools() {
 
 package_mangmi-session() {
   pkgdesc="Mangmi Clean Linux hybrid session: console mode (ES-DE) and desktop mode (KDE Plasma)"
-  depends=(mangmi-tools sway swaybg xorg-xwayland foot wireplumber dbus procps-ng)
+  depends=(mangmi-tools sway swaybg xorg-xwayland foot wireplumber dbus procps-ng
+           python sdl2-compat sdl2_ttf noto-fonts)
   optdepends=('es-de-bin: console mode frontend'
               'plasma-desktop: desktop mode'
-              'plasma-keyboard: on-screen keyboard in desktop mode')
+              'plasma-keyboard: on-screen keyboard in desktop mode'
+              'networkmanager: Wi-Fi setup in the game store'
+              'ffmpeg: screenshots in the game store')
   backup=(etc/xdg/kwinrc etc/xdg/kdeglobals etc/xdg/baloofilerc etc/xdg/kscreenlockerrc
           etc/xdg/ksmserverrc etc/xdg/kwalletrc etc/xdg/powerdevilrc)
   _tree session
+  _pywrapper mangmi-store store   # game store + Wi-Fi (module ships in mangmi-tools)
 }
 
 package_mangmi-emulators() {

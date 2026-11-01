@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Game Store
+Name[ru]=Магазин игр
+GenericName=Free games and ROM downloader
+GenericName[ru]=Загрузка бесплатных игр и ROM
+Comment=Download free homebrew games, ScummVM freeware and ROMs from your own server in one click
+Comment[ru]=Скачивание бесплатных homebrew-игр, игр ScummVM и ROM со своего сервера в один клик
+Exec=mangmi-store --windowed
+Icon=folder-download
+Terminal=false
+Categories=Game;Network;
+Keywords=rom;roms;homebrew;download;scummvm;wifi;

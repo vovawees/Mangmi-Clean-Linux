@@ -2,12 +2,20 @@
 // (mangmi-update / ES-DE "System Update") and add the optional software of
 // /usr/share/mangmi/optional.list (mangmi-update --add, ES-DE "Install - ...")
 // without typing a password. mangmi-update --install accepts only names
-// from that list.
+// from that list. The console mode has no polkit agent, so Wi-Fi setup
+// (mangmi-store --wifi, nmcli) is allowed the same way.
 polkit.addRule(function(action, subject) {
     var unit = action.lookup("unit");
     if (action.id == "org.freedesktop.systemd1.manage-units" &&
         (unit == "mangmi-update.service" || /^mangmi-install@[a-z0-9-]+\.service$/.test(unit)) &&
         action.lookup("verb") == "start" &&
+        subject.local && subject.active && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 &&
         subject.local && subject.active && subject.isInGroup("wheel")) {
         return polkit.Result.YES;
     }
