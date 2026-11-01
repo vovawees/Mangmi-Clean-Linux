@@ -1,0 +1,55 @@
+# Mangmi Clean Linux
+
+**Чистый, быстрый и полностью свободный Linux для портативной консоли Mangmi Air X (MQ65 / MQ66 / MQ66B).**
+Гибрид «консоль + ПК»: включаете — попадаете в игровой интерфейс (ES-DE) с настроенными эмуляторами;
+одна кнопка — и перед вами полноценный рабочий стол KDE Plasma с браузером, файловым менеджером и магазином приложений.
+
+> English summary: a clean, speed-first Arch Linux ARM based OS for the Mangmi Air X (Snapdragon 662 / SM6115)
+> handheld. Hybrid console (ES-DE + RetroArch + standalone emulators) and full desktop (KDE Plasma) modes,
+> mainline 7.2 kernel with ROCKNIX device enablement, Mesa Freedreno/Turnip (OpenGL ES 3.2 / Vulkan),
+> full hardware support (stick RGB LEDs, fan, rumble, audio, Wi-Fi, Bluetooth, battery, touchscreen).
+
+## Возможности
+
+| | |
+|---|---|
+| **Ядро** | Linux 7.2.y (mainline) + патчи ROCKNIX для SM6115 (панели, геймпад, звук, Wi-Fi, зарядка, разгон GPU до 1050 МГц) |
+| **Графика** | Mesa Freedreno (OpenGL / GLES 3.2) и Turnip (Vulkan 1.3), Wayland |
+| **Режим «Консоль»** | Sway-киоск + ES-DE на весь экран, RetroArch и отдельные эмуляторы, хоткеи как в ROCKNIX |
+| **Режим «ПК»** | KDE Plasma 6 (Wayland), стики работают как мышь, экранная клавиатура, Discover/Flatpak |
+| **Железо** | RGB-подсветка стиков (эффекты, индикация заряда), вентилятор (авто/тихий/макс), вибрация, профили производительности CPU/GPU |
+| **Скорость** | без initramfs, zram (zstd), MGLRU, BFQ, привязка прерываний к ядрам, большие ядра A73 для тяжёлых эмуляторов |
+| **Обновления** | `mangmi-update` — система (pacman), ядро, эмуляторы и ядра RetroArch одним действием |
+
+## Статус
+
+Проект в активной разработке. Сборка образа полностью автоматизирована (GitHub Actions),
+аппаратная часть основана на проверенной работе проекта [ROCKNIX](https://rocknix.org) для SM6115.
+
+## Быстрый старт
+
+1. Скачайте образ `mangmi-clean-linux-*.img.xz` со страницы [Releases](../../releases).
+2. Запишите его на microSD (balenaEtcher, Rufus или `xzcat образ.img.xz | sudo dd of=/dev/sdX bs=4M status=progress`).
+3. Один раз установите загрузчик **OpenABL** (вместо стокового ABL; Android при этом остаётся) — см. [docs/INSTALL.md](docs/INSTALL.md).
+4. Вставьте карту, включите консоль, удерживая **Громкость −**, в меню OpenABL выберите модель (MQ65/MQ66/MQ66B) и *Linux*.
+
+Подробности: [установка](docs/INSTALL.md) · [режимы](docs/MODES.md) · [горячие клавиши](docs/HOTKEYS.md) ·
+[эмуляторы](docs/EMULATORS.md) · [производительность](docs/PERFORMANCE.md) · [железо](docs/HARDWARE.md) ·
+[сборка из исходников](docs/BUILD.md) · [FAQ](docs/FAQ.md)
+
+## Сборка
+
+```sh
+git clone https://github.com/vovawees/Mangmi-Clean-Linux.git
+cd Mangmi-Clean-Linux
+sudo ./build.sh all        # ядро + пакеты + rootfs + образ (нужен aarch64-хост или CI)
+```
+
+Все внешние источники зафиксированы по версии и sha256/коммиту в [`config/build.conf`](config/build.conf).
+
+## Лицензия и благодарности
+
+Код проекта — GPL-2.0-or-later (см. [LICENSE](LICENSE)). Поддержка железа взята из
+[ROCKNIX](https://github.com/ROCKNIX/distribution) (GPL-2.0), загрузчик — [OpenABL](https://github.com/OpenHandheldCollective/OpenABL) (GPL-3.0).
+Проприетарные прошивки (GPU zap-shader, DSP, Wi-Fi) не хранятся в репозитории — они скачиваются во время сборки.
+Полный список — в [CREDITS.md](CREDITS.md).

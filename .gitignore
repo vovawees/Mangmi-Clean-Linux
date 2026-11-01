@@ -1,0 +1,13 @@
+# build outputs
+/work/
+/out/
+/cache/
+/config/local.conf
+*.img
+*.img.xz
+*.img.zst
+*.pkg.tar.*
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
