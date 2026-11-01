@@ -1,0 +1,153 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      flavour:
+        description: Image flavour
+        type: choice
+        options: [full, console]
+        default: full
+      publish:
+        description: Publish the image (nightly) and the package repository
+        type: boolean
+        default: true
+      kernel_from_run:
+        description: Reuse the kernel artifact of this workflow run id (skips the kernel build)
+        type: string
+        default: ''
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  IMAGE_FLAVOUR: ${{ inputs.flavour || 'full' }}
+  CACHE_DIR: ${{ github.workspace }}/cache
+  WORK_DIR: ${{ github.workspace }}/work
+  OUT_DIR: ${{ github.workspace }}/out
+
+jobs:
+  checks:
+    name: checks (lint, unit tests, device trees)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell scripts
+        run: |
+          mapfile -t files < <(printf '%s\n' build.sh scripts/*.sh scripts/chroot/*.sh packages/appimage.sh tests/*.sh
+                               grep -rlE '^#!(/usr/bin/env bash|/bin/bash|/usr/bin/bash|/bin/sh)' system)
+          for f in "${files[@]}"; do bash -n "$f"; done
+          shellcheck -S warning -x "${files[@]}"
+          for f in packages/*/PKGBUILD; do bash -n "$f"; done
+      - name: Python unit tests
+        run: cd mangmi && python3 -m unittest discover -s tests -v
+      - name: Boot entry tests
+        run: bash tests/boot-update.sh
+      - name: Package lists
+        run: |
+          for f in config/packages/*.list; do
+            if grep -nE '[^A-Za-z0-9@._+#[:space:]-]' "$f"; then echo "bad characters in $f"; exit 1; fi
+          done
+      - uses: actions/cache@v4
+        with:
+          path: cache
+          key: dtbs-${{ hashFiles('config/build.conf') }}
+      - name: Device trees
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq flex bison bc >/dev/null
+          ./build.sh dtbs
+
+  kernel:
+    needs: checks
+    if: ${{ !inputs.kernel_from_run }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libarchive-tools >/dev/null
+      - uses: actions/cache@v4
+        with:
+          path: |
+            cache/linux-*.tar.xz
+            cache/patch-*.xz
+            cache/wireless-regdb-*.tar.xz
+            cache/ccache
+          key: kernel-${{ hashFiles('config/build.conf', 'kernel/**', 'scripts/build-kernel.sh') }}-${{ github.run_id }}
+          restore-keys: kernel-
+      - name: Build environment
+        run: ./build.sh chroot
+      - name: Kernel
+        run: USE_CCACHE=1 ./build.sh kernel
+      - name: Pack kernel
+        run: tar -C out -cf kernel.tar kernel && ls -la kernel.tar && df -h .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernel
+          path: kernel.tar
+          retention-days: 7
+          compression-level: 6
+
+  image:
+    needs: [checks, kernel]
+    if: ${{ !cancelled() && needs.checks.result == 'success' && (needs.kernel.result == 'success' || needs.kernel.result == 'skipped') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost \
+                      /usr/local/.ghcup /usr/share/swift /usr/local/julia* /opt/az /usr/share/miniconda 2>/dev/null || true
+          sudo docker system prune -af >/dev/null 2>&1 || true
+          df -h /
+      - name: Host tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libarchive-tools >/dev/null
+      - uses: actions/download-artifact@v4
+        with:
+          name: kernel
+          run-id: ${{ inputs.kernel_from_run || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Unpack kernel
+        run: mkdir -p out && tar -C out -xf kernel.tar && rm kernel.tar && cat out/kernel/kernelrelease
+      - name: Build environment
+        run: ./build.sh chroot
+      - name: Packages
+        run: ./build.sh packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: out/repo/
+          retention-days: 14
+          compression-level: 0
+      - name: Root file system
+        run: ./build.sh rootfs && df -h /
+      - name: Image
+        run: |
+          sudo rm -rf cache/pacman/pkg/*
+          ./build.sh image
+          ls -la out/images
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ env.IMAGE_FLAVOUR }}
+          path: out/images/
+          retention-days: 14
+          compression-level: 0
+      - name: Publish
+        if: github.event_name != 'pull_request' && (github.event_name != 'workflow_dispatch' || inputs.publish)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/ci/publish.sh
