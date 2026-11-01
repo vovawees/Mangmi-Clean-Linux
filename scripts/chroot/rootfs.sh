@@ -86,5 +86,5 @@ find "${T}/var/log" -type f -delete
 touch "${T}/usr/lib/clock-epoch"
 
 du_mb=$(du -sxm "${T}" | cut -f1)
-ok "root file system ready: ${du_mb} MiB, $(pacman -r "${T}" -Qq | wc -l) packages"
-pacman -r "${T}" -Q >"/build/out/packages-${FLAVOUR}.txt"
+ok "root file system ready: ${du_mb} MiB, $(pacman -r "${T}" -Qq 2>/dev/null | wc -l) packages"
+pacman -r "${T}" -Q 2>/dev/null >"/build/out/packages-${FLAVOUR}.txt"

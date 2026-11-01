@@ -12,9 +12,9 @@ enable bluetooth.service
 enable systemd-timesyncd.service
 enable fstrim.timer
 
-# NetworkManager (with iwd) owns the network and writes /etc/resolv.conf;
-# nothing waits for "network online" at boot.
-disable NetworkManager-wait-online.service
+# NetworkManager (with iwd) owns the network and writes /etc/resolv.conf.
+# NetworkManager-wait-online comes along with it (Also=), but it only runs
+# when a unit wants network-online.target (mangmi-update), never at boot.
 disable systemd-networkd*
 disable systemd-network-generator.service
 disable systemd-resolved*
