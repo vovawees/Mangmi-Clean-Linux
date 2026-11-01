@@ -37,14 +37,19 @@ SH
 }
 
 # _appimage_desktop SRC-DIR EXEC ICON-NAME: install the bundled .desktop + icon
+# (AppDir entries are often symlinks, some of them dangling: use the first
+# candidate that resolves to a real file)
 _appimage_desktop() {
-  local d icon
-  d=$(find "$1" -maxdepth 1 -name '*.desktop' | head -1)
+  local c d="" icon="" ext=""
+  for c in "$1"/*.desktop; do [[ -f $c ]] && { d=$c; break; }; done
   if [[ -n $d ]]; then
     sed -E "s|^Exec=[^ ]*|Exec=$2|; s|^TryExec=.*||; s|^Icon=.*|Icon=$3|" "$d" \
       | install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/$3.desktop"
   fi
-  icon=$(find "$1" -maxdepth 1 \( -name '*.png' -o -name '*.svg' \) | head -1)
-  [[ -n $icon ]] && install -Dm644 "$icon" "$pkgdir/usr/share/pixmaps/$3.${icon##*.}"
+  for c in "$1"/*.svg "$1"/*.png "$1"/.DirIcon; do [[ -f $c ]] && { icon=$c; break; }; done
+  if [[ -n $icon ]]; then
+    case $icon in *.svg) ext=svg ;; *.png) ext=png ;; *) ext=$(file -b --extension "$icon" | cut -d/ -f1) ;; esac
+    install -Dm644 "$icon" "$pkgdir/usr/share/pixmaps/$3.${ext:-png}"
+  fi
   return 0
 }
