@@ -44,3 +44,9 @@ Steam Link (стриминг с ПК) работает через Flatpak.
 
 **Это официальная прошивка Mangmi?**
 Нет, это независимый открытый проект на базе Arch Linux ARM, наработок ROCKNIX и OpenABL.
+
+**Нужен другой язык интерфейса?**
+Ради места ставятся не все переводы (список — в [PERFORMANCE.md](PERFORMANCE.md)). Чтобы добавить,
+например, шведский: допишите `!usr/share/locale/sv/*` в конец строки `NoExtract = usr/share/locale/*`
+в `/etc/pacman.conf` и переустановите пакеты с переводами:
+`sudo pacman -S $(pacman -Qoq /usr/share/locale)`.

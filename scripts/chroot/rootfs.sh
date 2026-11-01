@@ -25,36 +25,35 @@ mkdir -p "${T}"
 
 # Space trimming with pacman NoExtract (also written to the device's pacman.conf,
 # so updates stay trimmed). The last matching pattern wins, so every "!"
-# exception follows its broad pattern. Not installed:
-#  - documentation and GObject introspection sources (licenses are kept);
+# exception follows its broad pattern. pacman tests every file of every
+# transaction against every pattern (once per hook trigger), so the list is
+# kept short. Not installed:
+#  - documentation, help, GObject introspection sources (licenses are kept);
 #  - translations other than LANGS (English is always kept);
 #  - firmware the Mangmi Air X never loads: it needs Adreno 610 (a630_sqe +
 #    zap), ADSP (qrb4210), Venus 6.0, WCN3990 Wi-Fi/Bluetooth and the
 #    device's own files (mangmi-firmware); small USB Wi-Fi firmware stays;
 #  - Noto Serif CJK and the extra Noto Sans CJK weights (Regular, Medium and
 #    Bold cover the UI and game titles).
-LANGS="ru uk be kk de fr es it pl pt pt_BR nl cs tr zh_CN zh_TW ja ko"
-WEBENGINE_LANGS="en-US en-GB ru uk de fr es it pl pt-BR pt-PT nl cs tr zh-CN zh-TW ja ko"
+LANGS="ru uk be kk de fr es it pl pt_BR tr zh_CN zh_TW ja ko"
 noextract() {
-  local l fw=usr/lib/firmware cjk=usr/share/fonts/noto-cjk qt=usr/share/qt6/translations
-  echo "NoExtract   = usr/share/doc/* usr/share/gtk-doc/* usr/share/man/* usr/share/info/* usr/share/gir-1.0/*"
-  echo "NoExtract   = usr/share/help/* !usr/share/help/C/* !usr/share/help/en* !usr/share/help/ru*"
+  local l fw=usr/lib/firmware cjk=usr/share/fonts/noto-cjk
+  echo "NoExtract   = usr/share/doc/* usr/share/gtk-doc/* usr/share/man/* usr/share/info/* usr/share/help/* usr/share/gir-1.0/*"
   printf 'NoExtract   = usr/share/locale/* !usr/share/locale/locale.alias !usr/share/locale/C/* !usr/share/locale/en*'
   for l in ${LANGS}; do printf ' !usr/share/locale/%s/*' "${l}"; done
-  printf '\nNoExtract   = %s/* !%s/*_en.qm' "${qt}" "${qt}"
-  for l in ${LANGS}; do printf ' !%s/*_%s.qm' "${qt}" "${l}"; done
-  for l in ${WEBENGINE_LANGS}; do printf ' !%s/qtwebengine_locales/%s.pak' "${qt}" "${l}"; done
   printf '\nNoExtract   = %s/qcom/* !%s/qcom/a630_sqe.fw* !%s/qcom/qrb4210/* !%s/qcom/venus-6.0/* !%s/qcom/sm6115/*\n' \
     "${fw}" "${fw}" "${fw}" "${fw}" "${fw}"
   echo "NoExtract   = ${fw}/ath10k/* !${fw}/ath10k/WCN3990/* ${fw}/ath11k/* ${fw}/ath12k/*"
-  echo "NoExtract   = ${cjk}/NotoSerifCJK-* ${cjk}/NotoSansCJK-Black.ttc ${cjk}/NotoSansCJK-*Light.ttc ${cjk}/NotoSansCJK-Thin.ttc"
+  echo "NoExtract   = ${cjk}/NotoSerifCJK-* ${cjk}/NotoSansCJK-[BDLT][!o]*"
 }
 NOEXTRACT="$(noextract)"
 conf=/build/work/pacman-install.conf
 awk -v ne="${NOEXTRACT}" '{print} /^\[options\]/{print ne}' /etc/pacman.conf >"${conf}"
 
 pacman -Sy --noconfirm >/dev/null
-pacstrap -C "${conf}" -c -G -M "${T}" "${pkgs[@]}"
+# C locale: glibc's fnmatch() is several times faster without multibyte
+# handling, and pacman calls it for every file x pattern x hook trigger.
+LC_ALL=C pacstrap -C "${conf}" -c -G -M "${T}" "${pkgs[@]}"
 
 # 2. identity of this build's partitions ------------------------------------------------
 cat >/build/work/image.env <<ENV
