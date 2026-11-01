@@ -16,6 +16,8 @@ url='https://github.com/vovawees/Mangmi-Clean-Linux'
 license=(GPL-2.0-only)
 options=(!strip !debug)
 _out=${MCL_KERNEL_OUT:-$startdir/../../out/kernel}
+# cross-compiled kernels come without headers (see scripts/build-kernel.sh)
+[[ -d $_out/headers ]] || pkgname=(linux-mangmi)
 
 _krel() { cat "$_out/kernelrelease"; }
 

@@ -5,6 +5,7 @@
 #   -> ROCKNIX config + kernel/mangmi.config -> Image, modules, DTBs, headers.
 #
 # Output: ${OUT_DIR}/kernel/{Image,dtbs/,modules/,headers/,config,System.map,kernelrelease}
+#         (headers/ only from native builds)
 #
 # Works natively on aarch64 or cross on x86_64 (set CROSS_COMPILE=aarch64-linux-gnu-).
 # env: DTBS_ONLY=1  - only build the device trees (quick validation, any host)
@@ -129,7 +130,13 @@ if [[ "${DTBS_ONLY:-0}" != 1 ]]; then
   cp "${KSRC}/System.map" "${KOUT}/System.map"
   make -C "${KSRC}" -s INSTALL_MOD_PATH="${KOUT}/modules" INSTALL_MOD_STRIP=1 DEPMOD=/bin/true modules_install
   rm -f "${KOUT}/modules/lib/modules/${krel}/"{build,source}
-  "${MCL_ROOT}/scripts/kernel-headers.sh" "${KSRC}" "${KOUT}/headers/usr/lib/modules/${krel}/build"
+  # Headers carry the kernel's build tools, so they only make sense from a native build
+  # (CI builds on arm64); a cross build would ship host binaries in them.
+  if [[ -z "${CROSS_COMPILE:-}" ]]; then
+    "${MCL_ROOT}/scripts/kernel-headers.sh" "${KSRC}" "${KOUT}/headers/usr/lib/modules/${krel}/build"
+  else
+    log "cross build: skipping linux-mangmi-headers (needs a native aarch64 build)"
+  fi
   ok "kernel ${krel}: $(du -h "${KOUT}/Image" | cut -f1) Image, $(find "${KOUT}/modules" -name '*.ko*' | wc -l) modules"
   ((${#kcc[@]})) && ccache -s 2>/dev/null | grep -Ei 'hit|miss' | head -3 >&2 || true
 fi
