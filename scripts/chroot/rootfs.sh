@@ -44,7 +44,16 @@ noextract() {
   printf '\nNoExtract   = %s/qcom/* !%s/qcom/a630_sqe.fw* !%s/qcom/qrb4210/* !%s/qcom/venus-6.0/* !%s/qcom/sm6115/*\n' \
     "${fw}" "${fw}" "${fw}" "${fw}" "${fw}"
   echo "NoExtract   = ${fw}/ath10k/* !${fw}/ath10k/WCN3990/* ${fw}/ath11k/* ${fw}/ath12k/*"
-  echo "NoExtract   = ${cjk}/NotoSerifCJK-* ${cjk}/NotoSansCJK-[BDLT][!o]*"
+  # fonts: Noto Sans/Serif/Mono (Latin, Cyrillic, Greek) + symbols; CJK Regular and Bold
+  echo "NoExtract   = ${cjk}/NotoSerifCJK-* ${cjk}/NotoSansCJK-[BDLMT][!o]*"
+  printf 'NoExtract   = %s/* !%s/NotoSans-* !%s/NotoSerif-* !%s/NotoSansMono-* !%s/NotoSansSymbols* !%s/NotoSansMath-*\n' \
+    usr/share/fonts/noto usr/share/fonts/noto usr/share/fonts/noto usr/share/fonts/noto usr/share/fonts/noto usr/share/fonts/noto
+  # development files (headers, static libraries, CMake modules; see FAQ),
+  # optimised Python byte code (only used with python -O), Perl manuals
+  echo "NoExtract   = usr/include/* usr/lib/*.a usr/lib/cmake/* usr/lib/perl5/*.h usr/share/perl5/*.pod"
+  echo "NoExtract   = usr/lib/python3*.opt-[12].pyc usr/lib/python3*/idlelib/* usr/lib/python3*/tkinter/*"
+  # RetroArch: Ozone menu icons come from the XMB monochrome set; no Mega Bezel
+  echo "NoExtract   = usr/share/retroarch/assets/xmb/* !usr/share/retroarch/assets/xmb/monochrome/* usr/share/libretro/shaders/shaders_slang/bezel/*"
 }
 NOEXTRACT="$(noextract)"
 conf=/build/work/pacman-install.conf

@@ -18,6 +18,22 @@ for d in "$HOME/.local/share/duckstation/bios" "$HOME/.config/PCSX2/bios" "$HOME
   [[ -e $d || -L $d ]] && continue
   mkdir -p "${d%/*}" && ln -s "$HOME/BIOS" "$d"
 done
+# RetroArch speaks the system language (set once; changeable in its menu)
+ra="$HOME/.config/retroarch/retroarch.cfg"
+if [[ -f $ra ]] && ! grep -q '^user_language' "$ra"; then
+  lang=${LANG:-}
+  [[ -n $lang ]] || lang=$(sed -n 's/^LANG=//p' /etc/locale.conf 2>/dev/null)
+  case $lang in
+    ru* | kk*) l=9 ;; uk*) l=26 ;; be*) l=32 ;; de*) l=4 ;; fr*) l=2 ;; es*) l=3 ;; it*) l=5 ;;
+    pl*) l=14 ;; pt_BR*) l=7 ;; pt*) l=8 ;; tr*) l=18 ;; ja*) l=1 ;; ko*) l=10 ;;
+    zh_TW* | zh_HK*) l=11 ;; zh*) l=12 ;; *) l=0 ;;
+  esac
+  printf 'user_language = "%s"\n' "$l" >>"$ra"
+fi
+
+# PPSSPP libretro core: fonts and UI atlas from the ppsspp-assets package
+[[ -d /usr/share/ppsspp/assets && ! -e $HOME/BIOS/PPSSPP && ! -L $HOME/BIOS/PPSSPP ]] &&
+  ln -s /usr/share/ppsspp/assets "$HOME/BIOS/PPSSPP"
 
 # Default emulators where ES-DE's own first choice is not shipped (set once,
 # changeable in ES-DE under Other settings -> Alternative emulators)

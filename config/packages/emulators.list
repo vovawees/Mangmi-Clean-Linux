@@ -1,5 +1,7 @@
-# Emulators. Standalone builds where they beat libretro on the Snapdragon 662,
-# libretro cores for everything else (all launched through ES-DE or RetroArch).
+# Emulators: libretro cores in one RetroArch setup (same menu, hotkeys and
+# save states for every system). Heavier standalone emulators are one-click
+# installs from ES-DE (Mangmi Air X -> Install ...), see
+# system/tools/usr/share/mangmi/optional.list.
 mangmi-emulators
 retroarch
 retroarch-assets-ozone
@@ -21,15 +23,11 @@ libretro-beetle-supergrafx
 libretro-mupen64plus-next
 libretro-parallel-n64
 libretro-flycast
-libretro-dolphin
 libretro-scummvm
 
 # --- extra cores (libretro buildbot, aarch64) ---------------------------------------
 mangmi-cores
 
-# --- standalone emulators -------------------------------------------------------------
-ppsspp
+# --- data -------------------------------------------------------------------------------
+# PPSSPP fonts/atlas for the libretro core (~/BIOS/PPSSPP -> /usr/share/ppsspp/assets)
 ppsspp-assets
-duckstation-bin
-melonds-bin
-armsx2-bin

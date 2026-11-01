@@ -53,3 +53,43 @@ _appimage_desktop() {
   fi
   return 0
 }
+
+# _appimage_dedupe APPDIR LIBDIR SONAME...: delete the bundled copies of
+# libraries the system provides with the same SONAME (list them, and depend on
+# their packages), then every bundled library no ELF executable of the AppDir
+# needs any more. The bundled libraries find the system ones through the
+# normal search path once their own copy is gone.
+_appimage_dedupe() {
+  local appdir=$1 libdir=$2 s
+  shift 2
+  for s in "$@"; do rm -f "$libdir/$s"; done
+  python3 - "$appdir" "$libdir" <<'PY'
+import os, re, subprocess, sys
+appdir, libdir = sys.argv[1], os.path.realpath(sys.argv[2])
+def is_elf(p):
+    try:
+        with open(p, "rb") as f:
+            return f.read(4) == b"\x7fELF"
+    except OSError:
+        return False
+def needed(p):
+    out = subprocess.run(["readelf", "-d", p], capture_output=True, text=True).stdout
+    return re.findall(r"\(NEEDED\)\s+Shared library: \[(.+?)\]", out)
+bundled = {f for f in os.listdir(libdir) if ".so" in f}
+roots = []
+for d, _, files in os.walk(appdir):
+    if os.path.realpath(d) == libdir:
+        continue
+    roots += [os.path.join(d, f) for f in files if not os.path.islink(os.path.join(d, f)) and is_elf(os.path.join(d, f))]
+seen, todo = set(), [n for r in roots for n in needed(r)]
+while todo:
+    n = todo.pop()
+    if n in bundled and n not in seen:
+        seen.add(n)
+        todo += needed(os.path.join(libdir, n))
+gone = sorted(bundled - seen)
+for n in gone:
+    os.remove(os.path.join(libdir, n))
+print(f"appimage: {len(gone)} unused bundled libraries removed", file=sys.stderr)
+PY
+}

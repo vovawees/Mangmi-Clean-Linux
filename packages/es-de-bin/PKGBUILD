@@ -2,13 +2,24 @@
 # ES-DE frontend (console mode), official aarch64 AppImage unpacked to /opt.
 pkgname=es-de-bin
 pkgver=3.5.0
-pkgrel=1
+pkgrel=2
 pkgdesc="ES-DE (EmulationStation Desktop Edition) game frontend"
 arch=(aarch64)
 url="https://es-de.org"
 license=(MIT)
-depends=(glibc)
-makedepends=(python squashfs-tools)
+# the system copies of the generic libraries bundled in the AppImage
+# (see _system_libs) replace the bundled ones: -70 MiB, fresher Mesa/SDL stack
+depends=(glibc bluez-libs brotli bzip2 cairo curl dav1d dbus fftw gdk-pixbuf2 glib2 gnutls
+         graphite gsm highway keyutils krb5 lame lcms2 libass libasyncns libbs2b libbsd libcap
+         libdatrie libdecor libdeflate libffi libgcrypt libgfortran libglvnd libgomp libidn2
+         libjpeg-turbo libldap libmd libmysofa libnghttp2 libogg libopenmpt libp11-kit libpgm
+         libpng libpsl libpulse librsvg libsamplerate libsndfile libsoxr libssh libssh2 libtasn1
+         libthai libtiff libunistring libva libvdpau libvorbis libwebp libxau libxcb libxcursor
+         libxdmcp libxext libxfixes libxi libxkbcommon libxrandr libxrender libxss lilv lz4 mpg123
+         nspr nss numactl ocl-icd openjpeg2 openssl opus pango pcre2 pixman pugixml sdl2-compat
+         serd snappy sord speex sratom systemd-libs util-linux-libs vulkan-icd-loader wayland
+         xvidcore xz zeromq zimg zix zstd)
+makedepends=(python squashfs-tools binutils)
 provides=(es-de emulationstation-de)
 conflicts=(es-de emulationstation-de)
 options=(!strip !debug)
@@ -17,8 +28,36 @@ noextract=("ES-DE_${pkgver}_aarch64.AppImage")
 sha256sums=('b6d34657842db89628d5bc42ed465b605108b45cb1d16b15332d6c9f60136a4b')
 source "$startdir/../appimage.sh"
 
+_system_libs=(
+  libGLdispatch.so.0 libOpenCL.so.1 libOpenGL.so.0 libSDL2-2.0.so.0 libXau.so.6 libXcursor.so.1
+  libXdmcp.so.6 libXext.so.6 libXfixes.so.3 libXi.so.6 libXrandr.so.2 libXrender.so.1 libXss.so.1
+  libass.so.9 libasyncns.so.0 libblkid.so.1 libbluetooth.so.3 libbrotlicommon.so.1 libbrotlidec.so.1
+  libbrotlienc.so.1 libbs2b.so.0 libbsd.so.0 libbz2.so.1.0 libcairo-gobject.so.2 libcairo.so.2
+  libcap.so.2 libcrypto.so.3 libcurl.so.4 libdatrie.so.1 libdav1d.so.7 libdbus-1.so.3
+  libdecor-0.so.0 libdeflate.so.0 libffi.so.8 libfftw3.so.3 libgcrypt.so.20 libgdk_pixbuf-2.0.so.0
+  libgfortran.so.5 libgio-2.0.so.0 libglib-2.0.so.0 libgmodule-2.0.so.0 libgnutls.so.30
+  libgobject-2.0.so.0 libgomp.so.1 libgraphite2.so.3 libgsm.so.1 libgssapi_krb5.so.2 libhwy.so.1
+  libidn2.so.0 libjpeg.so.8 libk5crypto.so.3 libkeyutils.so.1 libkrb5.so.3 libkrb5support.so.0
+  liblber.so.2 liblcms2.so.2 libldap.so.2 liblilv-0.so.0 liblz4.so.1 liblzma.so.5 libmd.so.0
+  libmount.so.1 libmp3lame.so.0 libmpg123.so.0 libmysofa.so.1 libnghttp2.so.14 libnspr4.so
+  libnss3.so libnssutil3.so libnuma.so.1 libogg.so.0 libopenjp2.so.7 libopenmpt.so.0 libopus.so.0
+  libp11-kit.so.0 libpango-1.0.so.0 libpangocairo-1.0.so.0 libpangoft2-1.0.so.0 libpcre2-8.so.0
+  libpgm-5.3.so.0 libpixman-1.so.0 libplc4.so libplds4.so libpng16.so.16 libpsl.so.5
+  libpugixml.so.1 libpulse.so.0 librsvg-2.so.2 libsamplerate.so.0 libserd-0.so.0 libsharpyuv.so.0
+  libsmime3.so libsnappy.so.1 libsndfile.so.1 libsord-0.so.0 libsoxr.so.0 libspeex.so.1
+  libsratom-0.so.0 libssh.so.4 libssh2.so.1 libssl.so.3 libsystemd.so.0 libtasn1.so.6 libthai.so.0
+  libtiff.so.6 libunistring.so.5 libva-drm.so.2 libva-x11.so.2 libva.so.2 libvdpau.so.1
+  libvorbis.so.0 libvorbisenc.so.2 libvorbisfile.so.3 libvulkan.so.1 libwayland-cursor.so.0
+  libwayland-egl.so.1 libwebp.so.7 libwebpmux.so.3 libxcb-render.so.0 libxcb-shm.so.0
+  libxkbcommon.so.0 libxvidcore.so.4 libzimg.so.2 libzix-0.so.0 libzmq.so.5 libzstd.so.1
+)
+
 package() {
   _appimage_extract "ES-DE_${pkgver}_aarch64.AppImage" "$pkgdir/opt/es-de"
+  _appimage_dedupe "$pkgdir/opt/es-de" "$pkgdir/opt/es-de/usr/lib" "${_system_libs[@]}"
+  # one bundled theme (the default, linear-es-de); the others are a click away
+  # in ES-DE's theme downloader
+  rm -rf "$pkgdir"/opt/es-de/usr/share/es-de/themes/{modern-es-de,slate-es-de}
   _appimage_launcher es-de /opt/es-de/AppRun
   _appimage_desktop "$pkgdir/opt/es-de" es-de es-de
 }

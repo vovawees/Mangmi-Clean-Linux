@@ -1,7 +1,9 @@
 # Эмуляторы и системы
 
-Игры запускаются из **ES-DE**; для каждой системы уже выбран самый быстрый на Snapdragon 662 эмулятор,
-и все они **предустановлены** — ничего докачивать и настраивать не нужно. Поменять эмулятор:
+Игры запускаются из **ES-DE**; для каждой системы уже выбран самый быстрый на Snapdragon 662 эмулятор.
+Всё работает через **одну** программу — RetroArch (одинаковые меню, горячие клавиши и сохранения для всех
+систем). Тяжёлые отдельные эмуляторы (PS2, DuckStation, Dolphin…) не занимают место в образе и ставятся
+одной кнопкой: ES-DE → *Mangmi Air X* → **Install - …** (см. [ниже](#дополнительные-эмуляторы-одной-кнопкой)). Поменять эмулятор:
 ES-DE → *Настройки* → *Other settings* → *Alternative emulators* (для системы) или *Edit this game's
 metadata* → *Alternative emulator* (для одной игры).
 
@@ -17,10 +19,9 @@ metadata* → *Alternative emulator* (для одной игры).
 | SNES / Super Famicom | `snes` | Snes9x | Mesen-S |
 | Game Boy / Color | `gb`, `gbc` | Gambatte | SameBoy, mGBA, Mesen-S |
 | Game Boy Advance | `gba` | mGBA | gpSP (быстрее, менее точный) |
-| Nintendo DS | `nds` | melonDS DS (JIT) | melonDS (отдельный) |
-| Nintendo 3DS | `n3ds` | Citra | — (только лёгкие игры) |
+| Nintendo DS | `nds` | melonDS DS (JIT) | melonDS (отдельный) — *Install* |
 | Nintendo 64 | `n64` | Mupen64Plus-Next | ParaLLEl N64 |
-| GameCube / Wii | `gc`, `wii` | Dolphin | — (лёгкие игры, профиль `max`) |
+| GameCube / Wii | `gc`, `wii` | Dolphin — *Install* (только лёгкие игры, профиль `max`) | |
 | Virtual Boy | `virtualboy` | Beetle VB | |
 | Pokémon Mini | `pokemini` | PokeMini | |
 
@@ -28,9 +29,9 @@ metadata* → *Alternative emulator* (для одной игры).
 
 | Система | Папка | По умолчанию | Также установлены |
 |---|---|---|---|
-| PlayStation | `psx` | PCSX ReARMed | DuckStation (отдельный, Vulkan, апскейл), SwanStation |
-| PlayStation 2 | `ps2` | ARMSX2 (PCSX2 для ARM64) | |
-| PSP | `psp` | PPSSPP | PPSSPP (отдельный) |
+| PlayStation | `psx` | PCSX ReARMed | SwanStation; DuckStation (отдельный) — *Install* |
+| PlayStation 2 | `ps2` | ARMSX2 (PCSX2 для ARM64) — *Install* | |
+| PSP | `psp` | PPSSPP | PPSSPP (отдельный) — *Install* |
 
 ## Sega
 
@@ -105,15 +106,18 @@ metadata* → *Alternative emulator* (для одной игры).
 
 Полный список имён — в [документации libretro](https://docs.libretro.com/) для соответствующего ядра.
 
-## Отдельные эмуляторы
+## Дополнительные эмуляторы одной кнопкой
 
-| Эмулятор | Зачем | Версия |
-|---|---|---|
-| **DuckStation** | PS1: точность, Vulkan (Turnip), апскейл, PGXP | AppImage aarch64, фиксированная версия |
-| **ARMSX2** | PS2 (форк PCSX2 под ARM64 с JIT) | AppImage aarch64 (4K-страницы) |
-| **PPSSPP** | PSP с Vulkan, лучше ядра в тяжёлых играх | пакет Arch Linux ARM |
-| **melonDS** | DS с JIT и удобной раскладкой экранов | AppImage aarch64 |
-| **RetroArch** | всё остальное (ядра libretro) | пакет Arch Linux ARM + ядра buildbot |
+ES-DE → *Mangmi Air X* → **Install - …** (или `mangmi-update --add <имя>` в терминале, список —
+`mangmi-update --list`). Пароль не нужен, нужен только интернет; заодно обновляется система.
 
-Все запускаются через `mangmi-run` (профиль производительности, большие ядра, `games.slice`) и
-обновляются вместе с системой (`mangmi-update`).
+| Пункт | Эмулятор | Зачем | Размер |
+|---|---|---|---|
+| *Install - PS2 Emulator (ARMSX2)* | **ARMSX2** | PS2 (форк PCSX2 под ARM64 с JIT); на Snapdragon 662 идут только лёгкие игры | ~200 МБ |
+| *Install - DuckStation (PS1)* | **DuckStation** | PS1: точность, Vulkan (Turnip), апскейл, PGXP | ~215 МБ |
+| *Install - melonDS (NDS)* | **melonDS** | DS с удобной раскладкой экранов | ~90 МБ |
+| *Install - PPSSPP (PSP)* | **PPSSPP** | PSP с Vulkan, иногда быстрее ядра | ~40 МБ |
+| *Install - Dolphin (GameCube, Wii)* | **Dolphin** (ядро) | GameCube / Wii, лёгкие игры | ~45 МБ |
+
+Также доступны `firefox` и `scx` (планировщики sched_ext). Все эмуляторы запускаются через `mangmi-run`
+(профиль производительности, большие ядра, `games.slice`) и обновляются вместе с системой (`mangmi-update`).

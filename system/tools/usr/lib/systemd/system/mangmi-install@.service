@@ -1,0 +1,11 @@
+[Unit]
+Description=Mangmi Clean Linux: install optional software (%i)
+Documentation=https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/EMULATORS.md
+Wants=network-online.target
+After=network-online.target mangmi-pacman-init.service mangmi-update.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mangmi-update --install %i
+TimeoutStartSec=infinity
+Nice=5

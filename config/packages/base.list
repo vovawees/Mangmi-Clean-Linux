@@ -17,7 +17,6 @@ wireless-regdb
 
 # --- performance ----------------------------------------------------------------
 zram-generator
-scx-scheds
 gamemode
 
 # --- network / bluetooth --------------------------------------------------------

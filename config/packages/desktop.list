@@ -8,10 +8,7 @@ bluedevil
 kscreen
 plasma-keyboard
 plasma-systemmonitor
-kinfocenter
 systemsettings
-kde-gtk-config
-breeze-gtk
 xdg-desktop-portal-kde
 xdg-user-dirs
 qt6-multimedia-ffmpeg
@@ -24,10 +21,11 @@ kate
 gwenview
 spectacle
 tesseract-data-eng
-tesseract-data-rus
 kio-extras
 ffmpegthumbs
-firefox
+# Qt WebEngine browser with a built-in ad blocker: Qt WebEngine is already
+# needed by Discover, so it costs 17 MiB instead of Firefox's 280 MiB + GTK
+falkon
 flatpak
 flatpak-kcm
 discover

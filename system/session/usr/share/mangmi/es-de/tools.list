@@ -16,3 +16,10 @@ Stick Lights - Static|exec mangmi-ctl led static
 Stick Lights - Temperature|exec mangmi-ctl led thermal
 Stick Lights - Off|exec mangmi-ctl led off
 System Update|exec foot -e mangmi-update
+Wi-Fi|exec mangmi-store --wifi
+ROM Store|exec mangmi-store
+Install - PS2 Emulator (ARMSX2)|exec foot -e mangmi-update --add armsx2
+Install - DuckStation (PS1)|exec foot -e mangmi-update --add duckstation
+Install - melonDS (NDS)|exec foot -e mangmi-update --add melonds
+Install - PPSSPP (PSP)|exec foot -e mangmi-update --add ppsspp
+Install - Dolphin (GameCube, Wii)|exec foot -e mangmi-update --add dolphin

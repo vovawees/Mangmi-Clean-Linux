@@ -7,9 +7,44 @@
 # As a normal user the privileged part runs as mangmi-update.service (allowed
 # for the local user by polkit), so it also works from the ES-DE tools menu
 # with nothing but a gamepad.
+#
+#   mangmi-update             update everything
+#   mangmi-update --add NAME  install optional software from
+#                             /usr/share/mangmi/optional.list (and update)
+#   mangmi-update --list      show that list
 set -uo pipefail
 
+OPTIONAL=/usr/share/mangmi/optional.list
+optional_pkgs() { # name -> packages (empty if not in the list)
+  awk -F'|' -v n="$1" '$1 == n && $1 !~ /^#/ {print $2}' "$OPTIONAL" 2>/dev/null
+}
+done_prompt() {
+  if [[ -t 0 ]]; then read -r -t 20 -p "Press Enter to close " _ || :; echo; else sleep 5; fi
+}
+
+if [[ ${1:-} == --list ]]; then
+  awk -F'|' '!/^#/ && NF >= 3 {printf "%-12s %s\n", $1, $3}' "$OPTIONAL"
+  exit 0
+fi
+
 if [[ $EUID -ne 0 ]]; then
+  if [[ ${1:-} == --add ]]; then
+    shift
+    rc=0
+    for name in "$@"; do
+      [[ -n $(optional_pkgs "$name") ]] || { echo "unknown: $name (see mangmi-update --list)"; rc=1; continue; }
+      echo "== Mangmi Clean Linux: installing $name =="
+      unit="mangmi-install@$name.service"
+      journalctl -f -n0 -o cat -u "$unit" 2>/dev/null & jpid=$!
+      systemctl start "$unit" || rc=$?
+      sleep 1; kill "$jpid" 2>/dev/null; wait "$jpid" 2>/dev/null
+    done
+    # new emulators run through mangmi-run from now on
+    [[ -x /usr/lib/mangmi/game-shim ]] && /usr/lib/mangmi/game-shim
+    if ((rc == 0)); then echo "== Installed. =="; else echo "== Failed - see: journalctl -u 'mangmi-install@*' =="; fi
+    done_prompt
+    exit "$rc"
+  fi
   echo "== Mangmi Clean Linux: system update =="
   journalctl -f -n0 -o cat -u mangmi-update.service 2>/dev/null & jpid=$!
   systemctl start mangmi-update.service; rc=$?
@@ -22,18 +57,29 @@ if [[ $EUID -ne 0 ]]; then
   else
     echo "== Update failed - see: journalctl -u mangmi-update.service =="
   fi
-  if [[ -t 0 ]]; then read -r -t 20 -p "Press Enter to close " _ || :; echo; else sleep 5; fi
+  done_prompt
   exit "$rc"
 fi
 
 set -e
+extra=()
+if [[ ${1:-} == --install || ${1:-} == --add ]]; then
+  shift
+  for name in "$@"; do
+    pkgs=$(optional_pkgs "$name")
+    [[ -n $pkgs ]] || { echo "unknown optional software: $name" >&2; exit 2; }
+    read -ra p <<<"$pkgs"
+    extra+=("${p[@]}")
+  done
+fi
 if [[ ! -f /etc/pacman.d/gnupg/trustdb.gpg ]]; then
   pacman-key --init
   pacman-key --populate archlinuxarm
 fi
-# new signing keys first, then everything else
+# new signing keys first, then everything else (a full upgrade also for
+# new packages: Arch does not support partial upgrades)
 pacman -Sy --noconfirm --needed archlinuxarm-keyring
-pacman -Su --noconfirm
+pacman -Su --noconfirm --needed "${extra[@]}"
 if command -v flatpak >/dev/null; then
   flatpak update --system -y --noninteractive || :
 fi

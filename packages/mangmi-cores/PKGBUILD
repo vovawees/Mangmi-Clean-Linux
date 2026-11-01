@@ -3,8 +3,8 @@
 # official libretro buildbot (nightly aarch64 builds, checksummed at build time).
 pkgname=mangmi-cores
 pkgver=20261101
-pkgrel=2
-pkgdesc="Extra libretro cores for Mangmi Clean Linux (arcade, 8/16-bit, handhelds, DOS, PSP, 3DS...)"
+pkgrel=3
+pkgdesc="Extra libretro cores for Mangmi Clean Linux (arcade, 8/16-bit, handhelds, DOS, PSP...)"
 arch=(aarch64)
 url="https://buildbot.libretro.com/nightly/linux/aarch64/latest/"
 license=(custom:various)
@@ -20,7 +20,6 @@ _cores=(
                                         # clashes with libretro-core-info)
   ppsspp                                # PSP
   yabasanshiro                          # Saturn (ARM dynarec)
-  citra                                 # 3DS (light games only)
   dosbox_pure puae vice_x64sc fuse cap32 atari800 bluemsx
   opera virtualjaguar vecx o2em freeintv tic80
 )

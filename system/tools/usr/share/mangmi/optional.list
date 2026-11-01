@@ -1,0 +1,11 @@
+# Optional software, installed with one click from ES-DE (Mangmi Air X ->
+# "Install - ...") or with "mangmi-update --add NAME". Kept out of the image to
+# save space; ES-DE picks the emulators up as soon as they are installed.
+# name|packages|description
+armsx2|armsx2-bin|PlayStation 2 emulator ARMSX2 (very demanding on the Snapdragon 662)
+duckstation|duckstation-bin|PlayStation emulator DuckStation (standalone, upscaling)
+melonds|melonds-bin|Nintendo DS emulator melonDS (standalone)
+ppsspp|ppsspp|PSP emulator PPSSPP (standalone)
+dolphin|libretro-dolphin|GameCube / Wii core Dolphin (light games only)
+firefox|firefox|Firefox web browser
+scx|scx-scheds|sched_ext CPU schedulers (scx_lavd, scx_bpfland)
