@@ -1,0 +1,28 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+pkgname=rmtfs
+pkgver=1.1.1
+pkgrel=1
+pkgdesc='Qualcomm remote file system service (modem/WLAN DSP storage)'
+arch=(aarch64)
+url='https://github.com/linux-msm/rmtfs'
+license=(BSD-3-Clause)
+depends=(qrtr systemd-libs)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        restart.conf)
+sha256sums=('190b50e97d2bb2cfa2ea20137a91aa5b113351f53f8c05fbb152ab97f31b57f7'
+            'SKIP')
+
+prepare() {
+  # generated QMI sources are shipped; make sure make never tries to run qmic
+  touch "$pkgname-$pkgver"/qmi_rmtfs.[ch]
+}
+
+build() {
+  make -C "$pkgname-$pkgver" prefix=/usr CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -lqrtr -ludev -lpthread"
+}
+
+package() {
+  make -C "$pkgname-$pkgver" prefix=/usr DESTDIR="$pkgdir" install
+  install -Dm644 restart.conf "$pkgdir/usr/lib/systemd/system/rmtfs.service.d/10-mangmi.conf"
+  install -Dm644 "$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

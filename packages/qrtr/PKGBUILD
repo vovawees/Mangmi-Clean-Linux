@@ -1,0 +1,23 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+pkgname=qrtr
+pkgver=1.2
+pkgrel=1
+pkgdesc='Qualcomm IPC Router user space library and tools'
+arch=(aarch64)
+url='https://github.com/linux-msm/qrtr'
+license=(BSD-3-Clause)
+depends=(glibc)
+makedepends=(meson ninja)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('7a82bf80246fe71287b13c66c0466208822e8337fcd4aaf302eee6c5fcb48a52')
+
+build() {
+  # The name service lives in the kernel since 5.7; only the library and tools are needed.
+  arch-meson "$pkgname-$pkgver" build -Dqrtr-ns=disabled -Dsystemd-service=disabled
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  install -Dm644 "$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,22 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+pkgname=tqftpserv
+pkgver=1.2
+pkgrel=1
+pkgdesc='Trivial File Transfer Protocol server over QRTR (DSP firmware/config files)'
+arch=(aarch64)
+url='https://github.com/linux-msm/tqftpserv'
+license=(BSD-3-Clause)
+depends=(qrtr zstd)
+makedepends=(meson ninja systemd)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('a3850c34e48f23b7bc360d70f1e91700de2f8c60af003eda93e14182f8cf6af1')
+
+build() {
+  arch-meson "$pkgname-$pkgver" build -Dsystemd-unit-prefix=/usr/lib/systemd/system
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+  install -Dm644 "$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

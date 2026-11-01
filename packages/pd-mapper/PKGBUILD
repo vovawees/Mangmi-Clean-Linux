@@ -1,0 +1,23 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+pkgname=pd-mapper
+pkgver=1.1
+pkgrel=1
+pkgdesc='Qualcomm protection domain mapper (needed for audio DSP and Wi-Fi)'
+arch=(aarch64)
+url='https://github.com/linux-msm/pd-mapper'
+license=(BSD-3-Clause)
+depends=(qrtr xz)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+        restart.conf)
+sha256sums=('7654a7fb8b70b0c7670f98ad9313649abc48eabcef84dad086ed01408fd538a2'
+            'SKIP')
+
+build() {
+  make -C "$pkgname-$pkgver" prefix=/usr CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS -lqrtr -llzma"
+}
+
+package() {
+  make -C "$pkgname-$pkgver" prefix=/usr DESTDIR="$pkgdir" install
+  install -Dm644 restart.conf "$pkgdir/usr/lib/systemd/system/pd-mapper.service.d/10-mangmi.conf"
+  install -Dm644 "$pkgname-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

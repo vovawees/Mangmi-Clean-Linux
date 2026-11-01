@@ -1,0 +1,30 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+#
+# Device firmware for the Mangmi Air X that is not part of linux-firmware:
+# Adreno 610 zap shader, compute DSP, modem/WLAN DSP images, WCN3990 board
+# data, Bluetooth NVM, AW88261 amplifier tuning and the Himax touch firmware.
+# Taken verbatim from ROCKNIX extra-firmware (SM6115 directory), pinned by commit.
+
+pkgname=mangmi-firmware
+_commit=925dfb5efbe5d6c3ca654f81e3e1f367f8492777
+pkgver=20261101
+pkgrel=1
+pkgdesc='Firmware blobs for the Mangmi Air X (SM6115) from ROCKNIX extra-firmware'
+arch=(any)
+url='https://github.com/ROCKNIX/extra-firmware'
+license=(LicenseRef-proprietary)
+depends=(linux-firmware-qcom linux-firmware-atheros)
+options=(!strip !debug)
+source=("extra-firmware-$_commit.tar.gz::https://github.com/ROCKNIX/extra-firmware/archive/$_commit.tar.gz")
+sha256sums=('b994fa1c451708bc7addd256e68e0a872559e54e4ddec27f73e6197d64aefc0c')
+
+package() {
+  cd "extra-firmware-$_commit/SM6115"
+  find . -type f | while read -r f; do
+    install -Dm644 "$f" "$pkgdir/usr/lib/firmware/${f#./}"
+  done
+  # Only the Mangmi Air X needs to ship; drop other SM6115 handhelds' board data.
+  rm -rf "$pkgdir"/usr/lib/firmware/ath10k/WCN3990/hw1.0/{mangmi-air-y,retroid-duolite}
+  rm -rf "$pkgdir"/usr/lib/firmware/qca/retroid-duolite
+  rm -rf "$pkgdir"/usr/lib/firmware/qcom/sm6125
+}
