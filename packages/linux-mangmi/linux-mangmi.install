@@ -1,0 +1,13 @@
+_update() {
+  local krel
+  for krel in /usr/lib/modules/*-mangmi; do
+    [ -f "$krel/pkgbase" ] || continue
+    depmod -a "${krel##*/}"
+  done
+  if command -v mangmi-boot-update >/dev/null 2>&1; then
+    mangmi-boot-update || echo ">>> mangmi-boot-update failed - check /boot/loader/entries"
+  fi
+}
+
+post_install() { _update; }
+post_upgrade() { _update; }

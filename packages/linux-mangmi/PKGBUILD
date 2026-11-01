@@ -1,0 +1,63 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Packages the kernel produced by scripts/build-kernel.sh (kernel.org 7.2.y +
+# ROCKNIX SM6115 enablement + kernel/mangmi.config). The heavy lifting lives in
+# the build script so CI, local builds and this package share one code path.
+# MCL_KERNEL_OUT must point at that script's output directory.
+
+pkgbase=linux-mangmi
+pkgname=(linux-mangmi linux-mangmi-headers)
+pkgver=${MCL_KERNEL_VERSION:-7.2.15}
+pkgrel=${MCL_KERNEL_PKGREL:-1}
+pkgdesc='Linux kernel for the Mangmi Air X (Snapdragon 662 / SM6115)'
+arch=(aarch64)
+url='https://github.com/vovawees/Mangmi-Clean-Linux'
+license=(GPL-2.0-only)
+options=(!strip !debug)
+_out=${MCL_KERNEL_OUT:-$startdir/../../out/kernel}
+
+_krel() { cat "$_out/kernelrelease"; }
+
+package_linux-mangmi() {
+  pkgdesc+=' - kernel, modules and device trees'
+  depends=(coreutils kmod)
+  optdepends=('mangmi-firmware: required device firmware'
+              'linux-firmware-qcom: GPU, DSP and video firmware')
+  provides=(WIREGUARD-MODULE NTSYNC-MODULE)
+  conflicts=(linux-aarch64 linux)
+  backup=()
+  install=linux-mangmi.install
+
+  local krel; krel=$(_krel)
+  [[ -f $_out/Image ]] || { echo "kernel not built: $_out" >&2; return 1; }
+
+  # Modules
+  install -dm755 "$pkgdir/usr/lib"
+  cp -a "$_out/modules/lib/modules" "$pkgdir/usr/lib/"
+  echo "$pkgbase" >"$pkgdir/usr/lib/modules/$krel/pkgbase"
+  install -Dm644 "$_out/Image" "$pkgdir/usr/lib/modules/$krel/vmlinuz"
+  install -Dm644 "$_out/config" "$pkgdir/usr/lib/modules/$krel/config"
+  install -Dm644 "$_out/System.map" "$pkgdir/usr/lib/modules/$krel/System.map"
+
+  # Boot partition (ESP mounted at /boot): EFI-stub Image + device trees,
+  # consumed by OpenABL through the BLS entries written by mangmi-boot-update.
+  install -Dm644 "$_out/Image" "$pkgdir/boot/Image-mangmi"
+  local dtb
+  for dtb in "$_out"/dtbs/qcom/*.dtb; do
+    install -Dm644 "$dtb" "$pkgdir/boot/dtbs/qcom/$(basename "$dtb")"
+    install -Dm644 "$dtb" "$pkgdir/usr/lib/modules/$krel/dtbs/qcom/$(basename "$dtb")"
+  done
+}
+
+package_linux-mangmi-headers() {
+  pkgdesc+=' - headers and scripts for building modules'
+  depends=(pahole)
+  provides=(linux-headers)
+  conflicts=(linux-aarch64-headers linux-headers)
+
+  install -dm755 "$pkgdir/usr/lib/modules"
+  cp -a "$_out/headers/usr/lib/modules/." "$pkgdir/usr/lib/modules/"
+  install -dm755 "$pkgdir/usr/src"
+  ln -sr "$pkgdir/usr/lib/modules/$(_krel)/build" "$pkgdir/usr/src/$pkgbase"
+}
