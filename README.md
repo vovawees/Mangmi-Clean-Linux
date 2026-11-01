@@ -18,7 +18,7 @@
 | **Режим «Консоль»** | Sway-киоск + ES-DE на весь экран, RetroArch и отдельные эмуляторы, хоткеи как в ROCKNIX |
 | **Режим «ПК»** | KDE Plasma 6 (Wayland), стики работают как мышь, экранная клавиатура, Discover/Flatpak |
 | **Железо** | RGB-подсветка стиков (эффекты, индикация заряда), вентилятор (авто/тихий/макс), вибрация, профили производительности CPU/GPU |
-| **Скорость** | без initramfs, zram (lz4), MGLRU, BFQ, PREEMPT + 1000 Гц, привязка прерываний к ядрам A53, большие ядра A73 для тяжёлых эмуляторов, авто-профиль под каждую систему |
+| **Скорость** | крошечный initramfs (1,5 МБ, busybox), zram (lz4), MGLRU, BFQ, PREEMPT + 1000 Гц, привязка прерываний к ядрам A53, большие ядра A73 для тяжёлых эмуляторов, авто-профиль под каждую систему |
 | **Эмуляторы** | 59 систем из коробки: RetroArch (40+ ядер), DuckStation, ARMSX2 (PS2), PPSSPP, melonDS — у каждой системы уже выбран самый быстрый эмулятор |
 | **Обновления** | `mangmi-update` — система (pacman), ядро, эмуляторы и ядра RetroArch одним действием (свой репозиторий `[mangmi]`) |
 
@@ -31,11 +31,12 @@
 ## Быстрый старт
 
 1. Скачайте образ `mangmi-clean-linux-*.img.xz` со страницы [Releases](../../releases) (ветка разработки — релиз **nightly**).
-2. Запишите его на microSD (balenaEtcher, Rufus или `xzcat образ.img.xz | sudo dd of=/dev/sdX bs=4M status=progress`).
-3. Один раз установите загрузчик **OpenABL** (вместо стокового ABL; Android при этом остаётся): из Android с root
-   скриптом `flash_abl.sh` с карты или через `fastboot` — см. [docs/INSTALL.md](docs/INSTALL.md).
-4. Вставьте карту, включите консоль, удерживая **Громкость −**, в меню OpenABL выберите *Boot mode → Linux* и *Start*.
-   Вход: `mangmi` / `mangmi`.
+2. Один раз установите загрузчик **OpenABL** (вместо стокового ABL) — см. [docs/INSTALL.md](docs/INSTALL.md).
+3. Установите систему:
+   - **во внутреннюю память (eMMC)**: распакуйте `.img.xz`, включите консоль с зажатой **Громкостью −** (меню OpenABL)
+     и выполните `fastboot flash userdata mangmi-clean-linux-…-full.img` (⚠️ стирает данные Android);
+   - **или на microSD** (Android остаётся): balenaEtcher, Rufus или `xzcat образ.img.xz | sudo dd of=/dev/sdX bs=4M status=progress`.
+4. В меню OpenABL выберите *Boot mode → Linux*, *Boot source → Auto* и *Start*. Вход: `mangmi` / `mangmi`.
 
 Подробности: [установка](docs/INSTALL.md) · [режимы](docs/MODES.md) · [горячие клавиши](docs/HOTKEYS.md) ·
 [эмуляторы](docs/EMULATORS.md) · [производительность](docs/PERFORMANCE.md) · [железо](docs/HARDWARE.md) ·

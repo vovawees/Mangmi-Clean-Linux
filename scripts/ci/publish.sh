@@ -102,12 +102,14 @@ fi
 cat >"${notes}" <<TXT
 **Mangmi Clean Linux** для Mangmi Air X (MQ65 / MQ66 / MQ66B) · commit ${short} · Linux ${kernel}
 
-1. Запишите \`*.img.xz\` на microSD (balenaEtcher / Rufus / \`xzcat … | sudo dd of=/dev/sdX bs=4M\`).
-2. Один раз установите OpenABL — [docs/INSTALL.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/INSTALL.md).
-3. (необязательно) Wi-Fi и пароль — в файле \`mangmi-setup.txt\` на разделе MANGMI_BOOT.
-4. Вставьте карту и включите консоль. Пользователь \`mangmi\`, пароль \`mangmi\`.
+1. Один раз установите OpenABL — [docs/INSTALL.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/INSTALL.md).
+2. Внутренняя память: распакуйте образ и в меню OpenABL (Громкость −) выполните
+   \`fastboot flash userdata mangmi-clean-linux-…-full.img\` (стирает данные Android).
+   microSD: запишите \`*.img.xz\` (balenaEtcher / Rufus / \`xzcat … | sudo dd of=/dev/sdX bs=4M\`).
+3. OpenABL: Boot mode → Linux, Boot source → Auto, Start. Пользователь \`mangmi\`, пароль \`mangmi\`.
 
-Flash the \`.img.xz\` to a microSD card, install OpenABL once (docs/INSTALL.md), boot.
+Install OpenABL once, then either \`fastboot flash userdata\` the decompressed image (internal eMMC)
+or write the \`.img.xz\` to a microSD card (docs/INSTALL.md), boot.
 Default login: mangmi / mangmi. Packages: \`*.packages.txt\`. Verify with \`sha256sum -c\`.
 TXT
 [[ ${pre} == true ]] && printf '\n> Nightly build from `main` — automatically built, not individually tested on hardware.\n' >>"${notes}"
