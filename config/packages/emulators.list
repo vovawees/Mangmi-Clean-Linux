@@ -22,8 +22,7 @@ libretro-beetle-supergrafx
 libretro-mupen64plus-next
 libretro-parallel-n64
 libretro-flycast
-libretro-melonds
-libretro-desmume
+libretro-dolphin
 libretro-scummvm
 
 # --- extra cores (libretro buildbot, aarch64) ---------------------------------------

@@ -1,0 +1,13 @@
+# Default emulator per ES-DE system where ES-DE's own first choice is not
+# shipped (or too slow on the Snapdragon 662): system|ES-DE emulator label.
+# Written once into ~/ES-DE/gamelists/<system>/gamelist.xml; change it any time
+# in ES-DE: Other settings -> Alternative emulators.
+arcade|FinalBurn Neo
+mame|MAME 2003-Plus
+psx|PCSX ReARMed
+ps2|PCSX2 (Standalone)
+saturn|YabaSanshiro
+pcengine|Beetle PCE FAST
+pcenginecd|Beetle PCE FAST
+atari5200|Atari800
+n3ds|Citra

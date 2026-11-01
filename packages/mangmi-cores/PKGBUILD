@@ -14,6 +14,7 @@ _cores=(
   fbneo mame2003_plus neocd             # arcade / Neo Geo CD
   fceumm gearsystem prosystem stella    # NES, Master System/GG, Atari 7800/2600
   gpsp handy pokemini                   # GBA (fast), Lynx, Pokemon Mini
+  melondsds                             # Nintendo DS (melonDS DS, JIT)
   mednafen_wswan mednafen_ngp mednafen_vb
   swanstation                           # PS1 (alternative)
   ppsspp                                # PSP
@@ -35,5 +36,5 @@ package() {
   for c in "${_cores[@]}"; do
     install -Dm644 "${c}_libretro.so" "$pkgdir/usr/lib/libretro/${c}_libretro.so"
   done
-  sha256sum "${_cores[@]/%/_libretro.so}" | install -Dm644 /dev/stdin "$pkgdir/usr/share/doc/$pkgname/SHA256SUMS"
+  sha256sum "${_cores[@]/%/_libretro.so}" | install -Dm644 /dev/stdin "$pkgdir/usr/share/mangmi/mangmi-cores.sha256"
 }

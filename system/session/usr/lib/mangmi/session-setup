@@ -12,6 +12,17 @@ while read -r sys; do
   [[ -z $sys || $sys == \#* ]] || mkdir -p "$roms/$sys"
 done </usr/share/mangmi/rom-systems.list 2>/dev/null
 
+# Default emulators where ES-DE's own first choice is not shipped (set once,
+# changeable in ES-DE under Other settings -> Alternative emulators)
+gl="$HOME/ES-DE/gamelists"
+while IFS='|' read -r sys label; do
+  [[ -z $sys || $sys == \#* || -z $label ]] && continue
+  [[ -e $gl/$sys/gamelist.xml ]] && continue
+  mkdir -p "$gl/$sys"
+  printf '<?xml version="1.0"?>\n<alternativeEmulator>\n\t<label>%s</label>\n</alternativeEmulator>\n<gameList />\n' \
+    "$label" >"$gl/$sys/gamelist.xml"
+done </usr/share/mangmi/es-de/alternatives.list 2>/dev/null
+
 # Mangmi tools: one script per entry, regenerated so updates reach the user
 tools="$roms/mangmi"
 mkdir -p "$tools"
