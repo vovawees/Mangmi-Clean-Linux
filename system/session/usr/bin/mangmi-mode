@@ -1,0 +1,62 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-mode console|desktop|toggle|get|set MODE
+#   console  - game mode: ES-DE full screen (sway kiosk)
+#   desktop  - KDE Plasma desktop, controls work as mouse & keyboard
+#   toggle   - switch to the other mode (hotkey: hold Guide + Select)
+#   set MODE - only remember the mode for the next session start
+set -u
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/mangmi"
+file="$cfg/mode"
+uid=$(id -u)
+export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$uid}
+export DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=$XDG_RUNTIME_DIR/bus}
+
+get() { [[ $(cat "$file" 2>/dev/null) == desktop ]] && echo desktop || echo console; }
+
+store() {
+  [[ $1 == console || $1 == desktop ]] || { echo "mangmi-mode: unknown mode '$1'" >&2; exit 2; }
+  mkdir -p "$cfg"
+  echo "$1" >"$file.tmp" && mv -f "$file.tmp" "$file"
+}
+
+running() {
+  if pgrep -u "$uid" -x kwin_wayland >/dev/null; then echo desktop
+  elif pgrep -u "$uid" -x sway >/dev/null; then echo console
+  fi
+}
+
+end_session() {
+  case "$1" in
+    desktop)
+      dbus-send --session --type=method_call --dest=org.kde.Shutdown /Shutdown \
+        org.kde.Shutdown.logout 2>/dev/null || pkill -TERM -u "$uid" -x kwin_wayland ;;
+    console)
+      if [[ -z ${SWAYSOCK:-} ]]; then
+        SWAYSOCK=$(ls -t "$XDG_RUNTIME_DIR"/sway-ipc.*.sock 2>/dev/null | head -1)
+        export SWAYSOCK
+      fi
+      swaymsg exit >/dev/null 2>&1 || pkill -TERM -u "$uid" -x sway ;;
+  esac
+}
+
+switch_to() {
+  local cur
+  cur=$(running)
+  store "$1"
+  if [[ -n $cur && $cur != "$1" ]]; then
+    mangmi-ctl flash "$([[ $1 == desktop ]] && echo a000ff || echo 00aaff)" >/dev/null 2>&1 || :
+    end_session "$cur"
+  fi
+}
+
+case "${1:-get}" in
+  get) get ;;
+  set) store "${2:-}" ;;
+  console|desktop) switch_to "$1" ;;
+  toggle)
+    cur=$(running)
+    [[ -n $cur ]] || cur=$(get)
+    if [[ $cur == desktop ]]; then switch_to console; else switch_to desktop; fi ;;
+  *) sed -n '3,7p' "$0" | sed 's/^# //'; exit 2 ;;
+esac

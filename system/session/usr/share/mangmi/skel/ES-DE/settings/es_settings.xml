@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<string name="ROMDirectory" value="~/ROMs" />
+<string name="ApplicationUpdaterFrequency" value="never" />
+<bool name="SplashScreen" value="false" />
+<bool name="ShowQuitMenu" value="true" />
+<string name="ScreensaverType" value="dim" />
+<int name="ScreensaverTimer" value="300000" />
+<string name="SaveGamelistsMode" value="always" />
+<bool name="VirtualKeyboard" value="true" />

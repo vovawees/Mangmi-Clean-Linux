@@ -1,0 +1,27 @@
+#!/bin/bash
+# First-login defaults for the user (never overwrites existing files) and the
+# "Mangmi Air X" tools system shown in ES-DE.
+set -u
+skel=/usr/share/mangmi/skel
+[[ -d $skel ]] && cp -r --update=none "$skel/." "$HOME/" 2>/dev/null
+chmod +x "$HOME"/Desktop/*.desktop 2>/dev/null
+
+roms=${MANGMI_ROMS:-$HOME/ROMs}
+mkdir -p "$roms" "$HOME/BIOS"
+while read -r sys; do
+  [[ -z $sys || $sys == \#* ]] || mkdir -p "$roms/$sys"
+done </usr/share/mangmi/rom-systems.list 2>/dev/null
+
+# Mangmi tools: one script per entry, regenerated so updates reach the user
+tools="$roms/mangmi"
+mkdir -p "$tools"
+stamp="$tools/.mangmi-generated"
+if [[ ! -f $stamp || /usr/share/mangmi/es-de/tools.list -nt $stamp ]]; then
+  find "$tools" -maxdepth 1 -name '*.sh' -exec grep -l '^# mangmi-generated' {} + 2>/dev/null | xargs -r rm -f
+  while IFS='|' read -r title cmd; do
+    [[ -z $title || $title == \#* ]] && continue
+    printf '#!/bin/bash\n# mangmi-generated\n%s\n' "$cmd" >"$tools/$title.sh"
+    chmod +x "$tools/$title.sh"
+  done </usr/share/mangmi/es-de/tools.list
+  touch "$stamp"
+fi

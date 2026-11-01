@@ -1,0 +1,17 @@
+#!/bin/bash
+# Desktop mode: KDE Plasma (Wayland). The built-in controls become mouse +
+# keyboard (toggle with Guide + L3); logging out returns to console mode.
+if ! command -v startplasma-wayland >/dev/null; then
+  echo "desktop-session: KDE Plasma is not installed (console image)" >&2
+  sleep 2
+  exit 1
+fi
+export MANGMI_MODE=desktop
+unset XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP
+mangmi-input desktop >/dev/null 2>&1 || :
+trap 'mangmi-input gamepad >/dev/null 2>&1' EXIT
+if [[ -x /usr/lib/plasma-dbus-run-session-if-needed ]]; then
+  /usr/lib/plasma-dbus-run-session-if-needed /usr/bin/startplasma-wayland
+else
+  startplasma-wayland
+fi

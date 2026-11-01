@@ -1,0 +1,14 @@
+[Compositing]
+AllowTearing=true
+
+[Plugins]
+blurEnabled=false
+contrastEnabled=false
+slidingpopupsEnabled=false
+
+[Wayland]
+InputMethod[$e]=/usr/share/applications/org.kde.plasma.keyboard.desktop
+VirtualKeyboardEnabled=true
+
+[Xwayland]
+Scale=1

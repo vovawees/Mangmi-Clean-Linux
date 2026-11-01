@@ -1,0 +1,24 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# ARMSX2 (PlayStation 2, PCSX2 for ARM64), 4K-page AppImage unpacked to /opt.
+# The Snapdragon 662 is at the lower end for PS2: lighter games only.
+pkgname=armsx2-bin
+pkgver=2.9.1
+pkgrel=1
+pkgdesc="ARMSX2 PlayStation 2 emulator (PCSX2 port for ARM64)"
+arch=(aarch64)
+url="https://github.com/ArmSX2/armsx2"
+license=(GPL-3.0-or-later)
+depends=(glibc)
+makedepends=(python squashfs-tools)
+provides=(armsx2)
+options=(!strip !debug)
+source=("ARMSX2-${pkgver}-Linux-arm64-4K-pages.AppImage::https://github.com/ArmSX2/armsx2/releases/download/${pkgver}/ARMSX2-${pkgver}-Linux-arm64-4K-pages.AppImage")
+noextract=("ARMSX2-${pkgver}-Linux-arm64-4K-pages.AppImage")
+sha256sums=('fe35d1cc76c3ffb91953a17e067d341d271ad5aa25c961fee12a6d492948c748')
+source "$startdir/../appimage.sh"
+
+package() {
+  _appimage_extract "ARMSX2-${pkgver}-Linux-arm64-4K-pages.AppImage" "$pkgdir/opt/armsx2"
+  _appimage_launcher armsx2 /opt/armsx2/AppRun
+  _appimage_desktop "$pkgdir/opt/armsx2" armsx2 armsx2
+}

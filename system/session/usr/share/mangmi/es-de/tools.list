@@ -1,0 +1,17 @@
+# ES-DE "Mangmi Air X" system: Title|command  (generated into ~/ROMs/mangmi)
+Desktop Mode|exec mangmi-mode desktop
+Performance - Powersave|exec mangmi-ctl perf powersave
+Performance - Balanced|exec mangmi-ctl perf balanced
+Performance - High|exec mangmi-ctl perf performance
+Performance - Max|exec mangmi-ctl perf max
+Fan - Auto|exec mangmi-ctl fan auto
+Fan - Quiet|exec mangmi-ctl fan quiet
+Fan - Cool|exec mangmi-ctl fan cool
+Fan - Max|exec mangmi-ctl fan max
+Stick Lights - Battery|exec mangmi-ctl led battery
+Stick Lights - Rainbow|exec mangmi-ctl led rainbow
+Stick Lights - Wave|exec mangmi-ctl led wave
+Stick Lights - Breath|exec mangmi-ctl led breath
+Stick Lights - Static|exec mangmi-ctl led static
+Stick Lights - Temperature|exec mangmi-ctl led thermal
+Stick Lights - Off|exec mangmi-ctl led off

@@ -1,0 +1,38 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-session - the hybrid session: console (game) mode or desktop mode.
+#
+# Started on tty1 by mangmi-session@USER.service (auto-login). The mode lives in
+# ~/.config/mangmi/mode; `mangmi-mode` switches it and ends the running session,
+# and this loop starts the other one. Leaving the desktop returns to console mode.
+set -u
+set -a
+for f in /usr/lib/environment.d/*.conf /etc/environment.d/*.conf; do
+  [[ -r $f ]] && . "$f"
+done
+set +a
+export XDG_SESSION_TYPE=wayland
+# per-session launcher shims (mangmi-emulators): every game goes through mangmi-run
+export PATH="$XDG_RUNTIME_DIR/mangmi/wrap:$PATH"
+[[ -x /usr/lib/mangmi/game-shim ]] && /usr/lib/mangmi/game-shim
+
+/usr/lib/mangmi/session-setup || :
+
+quick_fails=0
+while :; do
+  mode=$(mangmi-mode get)
+  started=$SECONDS
+  echo "mangmi-session: starting $mode mode"
+  if [[ $mode == desktop ]]; then
+    /usr/lib/mangmi/desktop-session
+    mangmi-mode set console
+  else
+    /usr/lib/mangmi/console-session
+  fi
+  if ((SECONDS - started < 10)); then
+    quick_fails=$((quick_fails + 1))
+    ((quick_fails >= 3)) && { echo "mangmi-session: session keeps failing, waiting"; sleep 10; }
+  else
+    quick_fails=0
+  fi
+done

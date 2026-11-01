@@ -1,0 +1,15 @@
+# name ES-DE looks for in $PATH [: real binary]
+retroarch
+ppsspp
+PPSSPPSDL:ppsspp
+PPSSPPQt:ppsspp-qt
+duckstation-qt
+pcsx2-qt:armsx2
+melonDS
+scummvm
+mgba-qt
+desmume
+flycast
+dolphin-emu
+azahar
+mupen64plus

@@ -1,0 +1,25 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# DuckStation (PlayStation), official arm64 AppImage unpacked to /opt.
+pkgname=duckstation-bin
+_tag=v0.1-12083
+pkgver=0.1.12083
+pkgrel=1
+pkgdesc="DuckStation PlayStation 1 emulator"
+arch=(aarch64)
+url="https://www.duckstation.org"
+license=(CC-BY-NC-ND-4.0)
+depends=(glibc)
+makedepends=(python squashfs-tools)
+provides=(duckstation)
+conflicts=(duckstation duckstation-git)
+options=(!strip !debug)
+source=("DuckStation-${pkgver}-arm64.AppImage::https://github.com/stenzek/duckstation/releases/download/${_tag}/DuckStation-arm64.AppImage")
+noextract=("DuckStation-${pkgver}-arm64.AppImage")
+sha256sums=('0c3a005183f65538f78fa0231d4c97aa2333684b481985c8d4cfab0640e297c7')
+source "$startdir/../appimage.sh"
+
+package() {
+  _appimage_extract "DuckStation-${pkgver}-arm64.AppImage" "$pkgdir/opt/duckstation"
+  _appimage_launcher duckstation-qt /opt/duckstation/AppRun
+  _appimage_desktop "$pkgdir/opt/duckstation" duckstation-qt duckstation
+}

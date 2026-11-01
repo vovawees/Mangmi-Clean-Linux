@@ -1,0 +1,24 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# ES-DE frontend (console mode), official aarch64 AppImage unpacked to /opt.
+pkgname=es-de-bin
+pkgver=3.5.0
+pkgrel=1
+pkgdesc="ES-DE (EmulationStation Desktop Edition) game frontend"
+arch=(aarch64)
+url="https://es-de.org"
+license=(MIT)
+depends=(glibc)
+makedepends=(python squashfs-tools)
+provides=(es-de emulationstation-de)
+conflicts=(es-de emulationstation-de)
+options=(!strip !debug)
+source=("ES-DE_${pkgver}_aarch64.AppImage::https://gitlab.com/es-de/emulationstation-de/-/package_files/357718204/download")
+noextract=("ES-DE_${pkgver}_aarch64.AppImage")
+sha256sums=('b6d34657842db89628d5bc42ed465b605108b45cb1d16b15332d6c9f60136a4b')
+source "$startdir/../appimage.sh"
+
+package() {
+  _appimage_extract "ES-DE_${pkgver}_aarch64.AppImage" "$pkgdir/opt/es-de"
+  _appimage_launcher es-de /opt/es-de/AppRun
+  _appimage_desktop "$pkgdir/opt/es-de" es-de es-de
+}

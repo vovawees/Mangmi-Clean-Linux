@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- Mangmi Clean Linux: device settings as an ES-DE system (~/ROMs/mangmi). -->
+<systemList>
+    <system>
+        <name>mangmi</name>
+        <fullname>Mangmi Air X</fullname>
+        <path>%ROMPATH%/mangmi</path>
+        <extension>.sh .SH</extension>
+        <command label="Mangmi tool">bash %ROM%</command>
+        <platform>pc</platform>
+        <theme>desktop</theme>
+    </system>
+</systemList>

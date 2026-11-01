@@ -1,0 +1,27 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# melonDS (Nintendo DS), official aarch64 AppImage unpacked to /opt.
+pkgname=melonds-bin
+pkgver=1.1
+pkgrel=1
+pkgdesc="melonDS Nintendo DS emulator"
+arch=(aarch64)
+url="https://melonds.kuribo64.net"
+license=(GPL-3.0-or-later)
+depends=(glibc)
+makedepends=(python squashfs-tools)
+provides=(melonds)
+conflicts=(melonds melonds-git)
+options=(!strip !debug)
+source=("https://github.com/melonDS-emu/melonDS/releases/download/${pkgver}/melonDS-${pkgver}-appimage-aarch64.zip")
+sha256sums=('c537ae018d6dcedfe9da0317a1d5c0163e69201e23abfa163fa2a63e437ace09')
+source "$startdir/../appimage.sh"
+
+package() {
+  local img
+  img=$(find . -maxdepth 2 -name '*.AppImage' | head -1)
+  [[ -n $img ]] || { echo "no AppImage in the zip" >&2; return 1; }
+  cp "$img" melonDS.AppImage
+  _appimage_extract melonDS.AppImage "$pkgdir/opt/melonds"
+  _appimage_launcher melonDS /opt/melonds/AppRun
+  _appimage_desktop "$pkgdir/opt/melonds" melonDS melonds
+}

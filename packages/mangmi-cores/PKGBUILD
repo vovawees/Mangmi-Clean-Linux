@@ -1,0 +1,39 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# Extra libretro cores that Arch Linux ARM does not package, taken from the
+# official libretro buildbot (nightly aarch64 builds, checksummed at build time).
+pkgname=mangmi-cores
+pkgver=20261101
+pkgrel=1
+pkgdesc="Extra libretro cores for Mangmi Clean Linux (arcade, 8/16-bit, handhelds, DOS, PSP, 3DS...)"
+arch=(aarch64)
+url="https://buildbot.libretro.com/nightly/linux/aarch64/latest/"
+license=(custom:various)
+depends=(retroarch libretro-core-info)
+options=(!strip !debug)
+_cores=(
+  fbneo mame2003_plus neocd             # arcade / Neo Geo CD
+  fceumm gearsystem prosystem stella    # NES, Master System/GG, Atari 7800/2600
+  gpsp handy pokemini                   # GBA (fast), Lynx, Pokemon Mini
+  mednafen_wswan mednafen_ngp mednafen_vb
+  swanstation                           # PS1 (alternative)
+  ppsspp                                # PSP
+  yabasanshiro                          # Saturn (ARM dynarec)
+  citra                                 # 3DS (light games only)
+  dosbox_pure puae vice_x64sc fuse cap32 atari800 bluemsx
+  opera virtualjaguar vecx o2em freeintv tic80
+)
+source=()
+sha256sums=()
+for _c in "${_cores[@]}"; do
+  source+=("${_c}-${pkgver}.zip::https://buildbot.libretro.com/nightly/linux/aarch64/latest/${_c}_libretro.so.zip")
+  sha256sums+=(SKIP)
+done
+unset _c
+
+package() {
+  local c
+  for c in "${_cores[@]}"; do
+    install -Dm644 "${c}_libretro.so" "$pkgdir/usr/lib/libretro/${c}_libretro.so"
+  done
+  sha256sum "${_cores[@]/%/_libretro.so}" | install -Dm644 /dev/stdin "$pkgdir/usr/share/doc/$pkgname/SHA256SUMS"
+}

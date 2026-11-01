@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Game Mode
+Name[ru]=Игровой режим
+Comment=Return to the console interface (ES-DE)
+Comment[ru]=Вернуться в консольный интерфейс (ES-DE)
+Exec=mangmi-mode console
+Icon=input-gaming
+Categories=Game;System;

@@ -1,0 +1,30 @@
+[Unit]
+Description=Mangmi session for %i (console / desktop)
+Documentation=https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/MODES.md
+After=systemd-user-sessions.service plymouth-quit-wait.service getty@tty1.service
+After=mangmi-hwd.service inputplumber.service mangmi-firstboot.service
+Wants=mangmi-hwd.service
+Conflicts=getty@tty1.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=~
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+Environment=XDG_SESSION_TYPE=wayland XDG_SESSION_CLASS=user
+ExecStart=/usr/bin/mangmi-session
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=graphical.target

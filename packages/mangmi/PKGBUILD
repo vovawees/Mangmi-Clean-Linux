@@ -1,10 +1,12 @@
 # Maintainer: Vovawe <vovawees@gmail.com>
 # Mangmi Clean Linux system integration, built straight from this repository:
 #   mangmi-tools      hardware daemon, hotkeys, device configs, boot entries, tuning
+#   mangmi-session    hybrid session: console mode (sway + ES-DE) / desktop mode (Plasma)
+#   mangmi-emulators  RetroArch/ES-DE defaults, launcher shims, controller profile
 # Files come from system/<package>/ (a tree mirroring /) and mangmi/ (Python).
 
 pkgbase=mangmi
-pkgname=(mangmi-tools)
+pkgname=(mangmi-tools mangmi-session mangmi-emulators)
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="Mangmi Clean Linux system integration"
@@ -13,7 +15,7 @@ url="https://github.com/vovawees/Mangmi-Clean-Linux"
 license=(GPL-2.0-or-later)
 makedepends=(git python)
 
-_root() { realpath "$startdir/../.."; }
+_root() { realpath "${MCL_SRC:-$startdir/../..}"; }
 
 pkgver() {
   local root v
@@ -79,4 +81,26 @@ package_mangmi-tools() {
   _pywrapper mangmi-ctl ctl
   _pywrapper mangmi-hotkeyd hotkeyd
   install -Dm644 "$(_root)/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
+
+package_mangmi-session() {
+  pkgdesc="Mangmi Clean Linux hybrid session: console mode (ES-DE) and desktop mode (KDE Plasma)"
+  depends=(mangmi-tools sway swaybg xorg-xwayland foot wireplumber dbus procps-ng)
+  optdepends=('es-de-bin: console mode frontend'
+              'plasma-desktop: desktop mode'
+              'plasma-keyboard: on-screen keyboard in desktop mode')
+  backup=(etc/xdg/kwinrc etc/xdg/kdeglobals etc/xdg/baloofilerc etc/xdg/kscreenlockerrc
+          etc/xdg/ksmserverrc etc/xdg/kwalletrc etc/xdg/powerdevilrc)
+  _tree session
+}
+
+package_mangmi-emulators() {
+  pkgdesc="Mangmi Clean Linux emulator setup: RetroArch defaults, hotkeys, controller profile, ES-DE launch shims"
+  depends=(mangmi-tools retroarch)
+  optdepends=('mangmi-cores: extra libretro cores'
+              'duckstation-bin: PlayStation'
+              'melonds-bin: Nintendo DS'
+              'armsx2-bin: PlayStation 2'
+              'ppsspp: PlayStation Portable')
+  _tree emulators
 }

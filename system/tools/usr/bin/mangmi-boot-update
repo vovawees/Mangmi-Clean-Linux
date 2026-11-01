@@ -62,8 +62,7 @@ if [[ -n $model ]]; then
   dt_line="devicetree /$dtb"
 fi
 
-. /etc/os-release 2>/dev/null || true
-name=${NAME:-Mangmi Clean Linux}
+name="Mangmi Clean Linux"
 entries=$ESP/loader/entries
 mkdir -p "$entries"
 
