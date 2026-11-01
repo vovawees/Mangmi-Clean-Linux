@@ -5,6 +5,9 @@
 ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="mmcblk[0-9]", ATTR{queue/scheduler}="bfq", ATTR{queue/read_ahead_kb}="1024"
 # USB / NVMe adapters: no scheduler overhead
 ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]|nvme[0-9]n[0-9]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+# Internal install: the root file system lives in a disk image inside the
+# Android userdata partition, mapped by the initramfs to loop0 (direct I/O).
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="loop[0-9]*", ENV{DEVTYPE}=="disk", ATTR{queue/read_ahead_kb}="1024"
 
 # USB controller runtime power management
 ACTION=="add", SUBSYSTEM=="platform", KERNEL=="4ef8800.usb|4e00000.usb", TEST=="power/control", ATTR{power/control}="auto"

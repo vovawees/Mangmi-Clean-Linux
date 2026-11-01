@@ -1,0 +1,151 @@
+#!/usr/bin/python3 -I
+# SPDX-License-Identifier: GPL-2.0-or-later
+"""mangmi-initramfs - build the initramfs of the Mangmi Clean Linux boot entries.
+
+    mangmi-initramfs [OUTPUT]        default: /boot/initramfs-mangmi.img
+
+Run by mangmi-boot-update (kernel and firmware updates, model changes). The
+image (~2 MiB, zstd) holds /init (usr/lib/mangmi/initramfs/init), the static
+busybox, util-linux losetup with its libraries, and the firmware that
+built-in drivers request before the root file system is mounted (Adreno 610
+microcode and zap shader), so the GPU comes up at once.
+"""
+import os
+import stat
+import subprocess
+import sys
+
+INIT = "/usr/lib/mangmi/initramfs/init"
+BUSYBOX = "/usr/bin/busybox"
+BINARIES = ["/usr/bin/losetup"]
+# /init needs the first line; the rest makes the rescue shell usable.
+APPLETS = """sh cat dd findfs mkdir mount mountpoint sleep switch_root tr umount usleep
+    blkid cp dmesg grep head less ls mv poweroff reboot rm sync vi""".split()
+FW_DIR = "/usr/lib/firmware"
+FIRMWARE = ["qcom/a630_sqe.fw", "qcom/sm6115/mangmi/a610_zap.mbn"]
+
+
+class Cpio:
+    """Minimal writer for the kernel's "newc" initramfs format."""
+
+    def __init__(self):
+        self.parts, self.ino, self.names = [], 1, set()
+
+    def _add(self, name, mode, data=b"", rdev=(0, 0)):
+        name = name.strip("/")
+        if name in self.names:
+            return
+        self.names.add(name)
+        fields = (self.ino, mode, 0, 0, 1, 0, len(data), 0, 0, rdev[0], rdev[1], len(name) + 1, 0)
+        hdr = b"070701" + b"".join(b"%08X" % f for f in fields) + name.encode() + b"\0"
+        self.parts += [hdr, b"\0" * (-len(hdr) % 4), data, b"\0" * (-len(data) % 4)]
+        self.ino += 1
+
+    def dir(self, name):
+        if name.strip("/") in ("", "."):
+            return
+        parent = os.path.dirname(name.strip("/"))
+        if parent:
+            self.dir(parent)
+        self._add(name, stat.S_IFDIR | 0o755)
+
+    def file(self, name, data, mode=0o644):
+        self.dir(os.path.dirname(name.strip("/")))
+        self._add(name, stat.S_IFREG | mode, data)
+
+    def symlink(self, name, target):
+        self.dir(os.path.dirname(name.strip("/")))
+        self._add(name, stat.S_IFLNK | 0o777, target.encode())
+
+    def chardev(self, name, major, minor, mode=0o600):
+        self._add(name, stat.S_IFCHR | mode, rdev=(major, minor))
+
+    def bytes(self):
+        self._add("TRAILER!!!", 0)
+        return b"".join(self.parts)
+
+
+def copy(cpio, path):
+    """Add a file under its own path; symlinks are kept and followed."""
+    while os.path.islink(path):
+        target = os.readlink(path)
+        cpio.symlink(path, target)
+        path = os.path.normpath(os.path.join(os.path.dirname(path), target))
+    with open(path, "rb") as f:
+        cpio.file(path, f.read(), stat.S_IMODE(os.stat(path).st_mode))
+
+
+def libraries(binary):
+    """Shared libraries of a binary (glibc's ldd), as real paths."""
+    out = subprocess.run(["ldd", binary], capture_output=True, text=True).stdout
+    libs = []
+    for line in out.splitlines():
+        words = line.split()
+        if "=>" in words and words.index("=>") + 1 < len(words):
+            libs.append(words[words.index("=>") + 1])
+        elif words and words[0].startswith("/"):
+            libs.append(words[0])
+    # resolve /lib -> /usr/lib, keep the file name (copy() records symlinks)
+    return [os.path.join(os.path.realpath(os.path.dirname(lib)), os.path.basename(lib))
+            for lib in libs if lib.startswith("/")]
+
+
+def compress(data):
+    try:
+        from compression import zstd  # Python 3.14+
+        return zstd.compress(data, level=19)
+    except ImportError:
+        return subprocess.run(["zstd", "-q", "-19", "-c"], input=data, capture_output=True, check=True).stdout
+
+
+def build():
+    c = Cpio()
+    for d in ("dev", "proc", "sys", "run", "new_root", "usr/bin", "usr/lib"):
+        c.dir(d)
+    c.chardev("dev/console", 5, 1)
+    c.chardev("dev/null", 1, 3, 0o666)
+    for link, target in (("bin", "usr/bin"), ("sbin", "usr/bin"), ("lib", "usr/lib"), ("lib64", "usr/lib"),
+                         ("usr/sbin", "bin")):
+        c.symlink(link, target)
+    with open(INIT, "rb") as f:
+        c.file("init", f.read(), 0o755)
+    for binary in BINARIES:  # before the applets: these win over busybox
+        copy(c, binary)
+        for lib in libraries(binary):
+            copy(c, lib)
+    copy(c, BUSYBOX)
+    for applet in APPLETS:
+        c.symlink("usr/bin/" + applet, "busybox")
+    missing = []
+    for fw in FIRMWARE:
+        for sub in ("updates/", ""):
+            found = [fw + ext for ext in ("", ".zst", ".xz") if os.path.exists(f"{FW_DIR}/{sub}{fw}{ext}")]
+            if found:
+                copy(c, f"{FW_DIR}/{sub}{found[0]}")
+                break
+        else:
+            missing.append(fw)
+    return c, missing
+
+
+def main():
+    out = sys.argv[1] if len(sys.argv) > 1 else "/boot/initramfs-mangmi.img"
+    if out in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0
+    c, missing = build()
+    for fw in missing:
+        print(f"mangmi-initramfs: warning: firmware {fw} not found", file=sys.stderr)
+    data = compress(c.bytes())
+    tmp = os.path.join(os.path.dirname(os.path.abspath(out)), "." + os.path.basename(out) + ".tmp")
+    with open(tmp, "wb") as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, out)
+    print(f"mangmi-initramfs: {out} ({len(data) // 1024} KiB)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

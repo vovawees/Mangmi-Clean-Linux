@@ -8,12 +8,21 @@ touch "$t/esp/Image-mangmi" "$t/esp/dtbs/qcom/sm6115-mangmi-air-x-mq66.dtb" "$t/
 echo linux-mangmi >"$t/mod/7.2.15-mangmi/pkgbase"
 echo "root=PARTUUID=12345678-02 rw rootwait quiet" >"$t/cmdline"
 export ESP=$t/esp MANGMI_CONF=$t/conf CMDLINE_FILE=$t/cmdline MODULES=$t/mod
-"$here/system/tools/usr/bin/mangmi-boot-update"
+# no initramfs builder: entries without initrd
+INITRAMFS_CMD=no-such-command "$here/system/tools/usr/bin/mangmi-boot-update"
 e=$t/esp/loader/entries/mangmi.conf
+if grep -q "^initrd" "$e"; then exit 1; fi
+# with the builder (stubbed: it only writes the file it is given)
+printf '#!/bin/sh\necho stub >"$1"\n' >"$t/mkinitrd"; chmod +x "$t/mkinitrd"
+export INITRAMFS_CMD=$t/mkinitrd
+"$here/system/tools/usr/bin/mangmi-boot-update"
 grep -qx "linux      /Image-mangmi" "$e"
+grep -qx "initrd     /initramfs-mangmi.img" "$e"
+grep -qx "initrd     /initramfs-mangmi.img" "$t/esp/loader/entries/mangmi-safe.conf"
+[[ $(cat "$t/esp/initramfs-mangmi.img") == stub ]]
 grep -qx "version    7.2.15-mangmi" "$e"
 grep -qx "options    root=PARTUUID=12345678-02 rw rootwait quiet" "$e"
-! grep -q devicetree "$e"
+if grep -q devicetree "$e"; then exit 1; fi
 grep -q "systemd.unit=multi-user.target" "$t/esp/loader/entries/mangmi-safe.conf"
 grep -qx "default mangmi.conf" "$t/esp/loader/loader.conf"
 "$here/system/tools/usr/bin/mangmi-boot-update" --model mq66
@@ -26,7 +35,7 @@ if "$here/system/tools/usr/bin/mangmi-boot-update" --model mq65 2>/dev/null; the
 fi
 grep -qx mq66 "$t/conf/model"   # failed pin keeps the old one
 "$here/system/tools/usr/bin/mangmi-boot-update" --model auto
-! grep -q devicetree "$e"
+if grep -q devicetree "$e"; then exit 1; fi
 [[ ! -e $t/esp/loader/entries/mangmi-mq66b.conf ]]
 for f in "$t"/esp/loader/entries/* "$t"/esp/loader/entries/.[!.]*; do
   [[ -e $f && $f != *.conf ]] && { echo "stray file $f" >&2; exit 1; }

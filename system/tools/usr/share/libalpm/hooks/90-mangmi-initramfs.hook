@@ -1,0 +1,20 @@
+# Rebuild /boot/initramfs-mangmi.img and the boot entries when anything the
+# initramfs is made of changes (the kernel package does it on its own).
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/bin/busybox
+Target = usr/bin/losetup
+Target = usr/lib/libc.so.6
+Target = usr/lib/libsmartcols.so*
+Target = usr/lib/firmware/qcom/a630_sqe.fw*
+Target = usr/lib/firmware/qcom/sm6115/mangmi/a610_zap.mbn*
+Target = usr/lib/firmware/updates/qcom/*
+Target = usr/lib/mangmi/initramfs/init
+Target = usr/bin/mangmi-initramfs
+
+[Action]
+Description = Updating the Mangmi initramfs and boot entries...
+When = PostTransaction
+Exec = /usr/bin/sh -c '[ -e /etc/kernel/cmdline ] && [ -e /boot/Image-mangmi ] || exit 0; exec /usr/bin/mangmi-boot-update'

@@ -1,0 +1,155 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Mangmi Clean Linux initramfs (built by mangmi-initramfs): find the root file
+# system, mount it and hand over to systemd. Takes ~0.1 s on a normal boot.
+#
+#  * root=PARTUUID=... is a partition of the SD card / eMMC / USB drive:
+#    mount it, like the kernel would.
+#  * Otherwise the disk image was written *into* a partition - the OpenABL
+#    internal install puts the whole image into Android's "userdata"
+#    partition. Linux does not read a partition table inside a partition, so
+#    that partition goes onto a loop device with partition scanning (and
+#    direct I/O, so nothing is cached twice); the root partition is then
+#    found inside, under the same PARTUUID.
+#
+# Kernel command line: root= rootfstype= rootflags= rw|ro init= as usual, plus
+#   mangmi.rootwait=SECONDS  how long to look for the root file system (30)
+#   mangmi.shell             stop in a shell before starting the system
+# tests/initramfs.sh sources this file with MANGMI_INIT_TEST=1.
+umask 022
+if [ -z "${MANGMI_INIT_TEST:-}" ]; then
+  export PATH=/usr/bin
+  mountpoint -q /dev || mount -t devtmpfs -o nosuid,mode=0755 devtmpfs /dev
+  mount -t proc -o nosuid,nodev,noexec proc /proc
+  mount -t sysfs -o nosuid,nodev,noexec sysfs /sys
+  exec </dev/console >/dev/console 2>&1
+fi
+
+# util-linux losetup (direct I/O, sector size); busybox ash would run its own
+# applet for a bare "losetup"
+LOSETUP=${LOSETUP:-/usr/bin/losetup}
+
+root="" rootfstype="" rootflags="" mode=ro init=/sbin/init wait=30 shell="" quiet=""
+for arg in ${MANGMI_CMDLINE:-$(cat /proc/cmdline)}; do
+  case $arg in
+    root=*) root=${arg#root=} ;;
+    rootfstype=*) rootfstype=${arg#rootfstype=} ;;
+    rootflags=*) rootflags=${arg#rootflags=} ;;
+    init=*) init=${arg#init=} ;;
+    rw) mode=rw ;;
+    ro) mode=ro ;;
+    quiet) quiet=1 ;;
+    mangmi.rootwait=*) wait=${arg#mangmi.rootwait=} ;;
+    mangmi.shell | mangmi.shell=1) shell=1 ;;
+  esac
+done
+
+say() { echo "mangmi-initramfs: $*"; }
+nap() { sleep 0.1 2>/dev/null || usleep 100000; }
+
+rescue() {
+  echo
+  say "$*"
+  echo "  root=$root"
+  echo "  Block devices:"
+  for d in /sys/class/block/*; do
+    [ -e "$d/dev" ] || continue
+    n=${d##*/} pn="" pu=""
+    while IFS='=' read -r k v; do
+      case $k in PARTNAME) pn=$v ;; PARTUUID) pu=$v ;; esac
+    done <"$d/uevent"
+    echo "    $n $(( $(cat "$d/size") / 2048 )) MiB ${pn:+name=$pn }${pu:+partuuid=$pu}"
+  done
+  echo
+  echo "  Rescue shell (exit to retry). Hold the power button to turn off."
+  sh
+}
+
+# by_partuuid UUID -> /dev/NAME of the partition with that GPT partition UUID
+by_partuuid() {
+  for u in /sys/class/block/*/uevent; do
+    n="" p=""
+    while IFS='=' read -r k v; do
+      case $k in DEVNAME) n=$v ;; PARTUUID) p=$v ;; esac
+    done <"$u"
+    [ -n "$p" ] && [ "$p" = "$1" ] && [ -b "/dev/$n" ] && { echo "/dev/$n"; return 0; }
+  done
+  return 1
+}
+
+find_root() {
+  case $root in
+    PARTUUID=*) by_partuuid "$(echo "${root#PARTUUID=}" | tr 'A-F' 'a-f')" ;;
+    /dev/*) [ -b "$root" ] && echo "$root" ;;
+    *) findfs "$root" 2>/dev/null ;;   # UUID=, LABEL=
+  esac
+}
+
+# A disk image inside a partition starts with a protective MBR and a GPT
+# header ("EFI PART") at byte 512, or at byte 4096 for a 4 KiB-sector image.
+gpt_sector() {
+  [ "$(dd if="$1" bs=8 skip=64 count=1 2>/dev/null)" = "EFI PART" ] && { echo 512; return 0; }
+  [ "$(dd if="$1" bs=8 skip=512 count=1 2>/dev/null)" = "EFI PART" ] && { echo 4096; return 0; }
+  return 1
+}
+
+# attach_images: put partitions holding a disk image onto loop devices until
+# one contains the root partition; sets $dev. Runs in this shell (not in
+# $(...)) so that $tried survives between polls.
+tried=" "
+attach_images() {
+  # Android's userdata first, then any other large (>= 1 GiB) partition.
+  for pass in userdata other; do
+    for d in /sys/class/block/*; do
+      n=${d##*/}
+      [ -e "$d/partition" ] || continue
+      case $tried in *" $n "*) continue ;; esac
+      pn=""
+      while IFS='=' read -r k v; do [ "$k" = PARTNAME ] && pn=$v; done <"$d/uevent"
+      if [ $pass = userdata ]; then [ "$pn" = userdata ] || continue; fi
+      [ "$(cat "$d/size")" -ge 2097152 ] || continue
+      tried="$tried$n "
+      ss=$(gpt_sector "/dev/$n") || continue
+      loop=$($LOSETUP --find --show --partscan --direct-io=on --sector-size "$ss" "/dev/$n" 2>/dev/null) \
+        || loop=$($LOSETUP --find --show --partscan --sector-size "$ss" "/dev/$n") || continue
+      if dev=$(find_root); then
+        [ -n "$quiet" ] || say "disk image in /dev/$n${pn:+ ($pn)} -> $loop"
+        return 0
+      fi
+      $LOSETUP --detach "$loop"
+    done
+  done
+  return 1
+}
+
+[ -n "${MANGMI_INIT_TEST:-}" ] && return 0
+[ -n "$root" ] || rescue "no root= on the kernel command line"
+while :; do
+  dev="" t=0
+  while [ $t -lt $((wait * 10)) ]; do
+    dev=$(find_root) && break
+    # partitions appear within a second or two; give a real partition a
+    # moment before looking for a disk image inside a partition
+    if [ $t -ge 5 ]; then attach_images && break; fi
+    [ $t = 50 ] && say "waiting for the root file system ($root)..."
+    nap; t=$((t + 1))
+  done
+  if [ -n "$dev" ]; then
+    if mount ${rootfstype:+-t "$rootfstype"} -o "$mode${rootflags:+,$rootflags}" "$dev" /new_root; then
+      [ -x "/new_root$init" ] || [ -L "/new_root$init" ] && break
+      umount /new_root
+      rescue "$init not found on $dev"
+    else
+      rescue "cannot mount $dev"
+    fi
+  else
+    rescue "root file system not found"
+  fi
+  tried=" "
+done
+
+[ -n "$shell" ] && { say "mangmi.shell: the root file system is on /new_root"; sh; }
+for m in /dev /proc /sys; do
+  mount -o move "$m" "/new_root$m" 2>/dev/null || umount -l "$m"
+done
+exec switch_root /new_root "$init" "$@"

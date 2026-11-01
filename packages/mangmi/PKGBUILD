@@ -66,7 +66,7 @@ package_mangmi-tools() {
   pkgdesc="Mangmi Air X hardware support: stick RGB, fan, performance profiles, hotkeys, audio/input configs, boot entries"
   depends=(python python-evdev brightnessctl inputplumber alsa-ucm-conf pipewire wireplumber
            qrtr pd-mapper rmtfs tqftpserv mangmi-firmware zram-generator
-           cloud-guest-utils e2fsprogs util-linux systemd)
+           cloud-guest-utils e2fsprogs util-linux systemd busybox zstd)
   optdepends=('scx-scheds: sched_ext CPU schedulers (scx_lavd)'
               'linux-mangmi: the matching kernel')
   backup=()

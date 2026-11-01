@@ -12,12 +12,16 @@
 #   mangmi-boot-update --model auto    use OpenABL's "Device model" setting again
 #
 # Kernel command line: /etc/kernel/cmdline (root=PARTUUID=... added if missing).
+# Every run also rebuilds the initramfs (mangmi-initramfs), which finds the
+# root file system on the SD card, the eMMC or inside the userdata partition.
 set -euo pipefail
 
 ESP=${ESP:-/boot}
 CONF=${MANGMI_CONF:-/etc/mangmi}
 CMDLINE_FILE=${CMDLINE_FILE:-/etc/kernel/cmdline}
 MODULES=${MODULES:-/usr/lib/modules}
+INITRAMFS_CMD=${INITRAMFS_CMD:-mangmi-initramfs}
+INITRD=initramfs-mangmi.img
 MODELS="mq65 mq66 mq66b"
 
 die() { echo "mangmi-boot-update: $*" >&2; exit 1; }
@@ -62,6 +66,12 @@ if [[ -n $model ]]; then
   dt_line="devicetree /$dtb"
 fi
 
+if command -v "${INITRAMFS_CMD%% *}" >/dev/null; then
+  $INITRAMFS_CMD "$ESP/$INITRD" >/dev/null || die "cannot build $ESP/$INITRD"
+fi
+initrd_line=""
+[[ -f $ESP/$INITRD ]] && initrd_line="initrd     /$INITRD"
+
 name="Mangmi Clean Linux"
 entries=$ESP/loader/entries
 mkdir -p "$entries"
@@ -73,6 +83,7 @@ write_entry() { # file title sort-key extra-options
     [[ -n $krel ]] && echo "version    $krel"
     echo "sort-key   $3"
     echo "linux      /Image-mangmi"
+    [[ -n $initrd_line ]] && echo "$initrd_line"
     [[ -n $dt_line ]] && echo "$dt_line"
     echo "options    $cmdline${4:+ $4}"
   } >"$tmp"
@@ -101,4 +112,4 @@ printf 'default mangmi.conf\n' >"$tmp"
 mv -f "$tmp" "$ESP/loader/loader.conf"
 sync -f "$ESP/loader/loader.conf" 2>/dev/null || sync
 
-echo "mangmi-boot-update: kernel ${krel:-?}, device tree: ${model:-OpenABL Device model setting}"
+echo "mangmi-boot-update: kernel ${krel:-?}${initrd_line:+ + initramfs}, device tree: ${model:-OpenABL Device model setting}"
