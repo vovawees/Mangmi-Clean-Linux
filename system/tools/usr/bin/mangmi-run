@@ -46,7 +46,7 @@ system=${system,,}
 
 if [[ -z $cores ]]; then
   case "$system" in
-    ps2|gc|wii|saturn|3ds|switch|psvita) cores=4-7 ;;
+    ps2|gc|wii|saturn|n3ds|switch|psvita) cores=4-7 ;;
   esac
 fi
 [[ $cores == all ]] && cores=""

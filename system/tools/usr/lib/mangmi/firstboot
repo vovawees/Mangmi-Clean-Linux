@@ -25,7 +25,8 @@ apply_setup() {
   [[ -f $SETUP ]] || return 0
   local v ssid psk user
   user=$(awk -F: '$3 == 1000 {print $1}' /etc/passwd)
-  v=$(setting HOSTNAME); [[ -n $v ]] && hostnamectl set-hostname "$v" 2>/dev/null || { [[ -n $v ]] && echo "$v" >/etc/hostname; }
+  v=$(setting HOSTNAME)
+  if [[ -n $v ]]; then echo "$v" >/etc/hostname; echo "$v" >/proc/sys/kernel/hostname; fi
   v=$(setting TIMEZONE); [[ -n $v && -e /usr/share/zoneinfo/$v ]] && ln -sf "/usr/share/zoneinfo/$v" /etc/localtime
   v=$(setting LOCALE)
   if [[ -n $v ]]; then
@@ -34,7 +35,8 @@ apply_setup() {
   fi
   v=$(setting MODEL); [[ -n $v ]] && mangmi-boot-update --model "$v"
   v=$(setting PASSWORD); [[ -n $v && -n $user ]] && echo "$user:$v" | chpasswd
-  v=$(setting SSH); [[ ${v,,} == yes ]] && systemctl enable sshd.service
+  v=$(setting SSH)
+  if [[ ${v,,} == yes ]]; then systemctl enable sshd.service && systemctl start --no-block sshd.service; fi
   ssid=$(setting WIFI_SSID) psk=$(setting WIFI_PASSWORD)
   if [[ -n $ssid ]]; then
     local f="/etc/NetworkManager/system-connections/$ssid.nmconnection"

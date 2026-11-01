@@ -33,7 +33,7 @@ DEFAULTS: dict[str, Any] = {
         "profile": "balanced",
         # Per-system overrides applied while a game runs (ES-DE system names).
         "games": {
-            "ps2": "max", "gc": "max", "wii": "max", "3ds": "performance",
+            "ps2": "max", "gc": "max", "wii": "max", "n3ds": "performance",
             "saturn": "performance", "dreamcast": "performance",
             "psp": "performance", "n64": "performance", "nds": "performance",
             "psx": "balanced",

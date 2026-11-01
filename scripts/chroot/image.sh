@@ -24,17 +24,27 @@ rm -rf "${W}"; mkdir -p "${W}" "${OUT}"
 ESP="${W}/esp"
 mkdir -p "${ESP}/openabl"
 cp -a "${T}/boot/." "${ESP}/"
-cp /build/src/overlay/esp/mangmi-setup.txt "${ESP}/"
+cp -r /build/src/overlay/esp/. "${ESP}/"
 fetch "${OPENABL_URL}/abl_signed-SM6115.elf" "${CACHE_DIR}/openabl-${OPENABL_VERSION}/abl_signed-SM6115.elf" "${OPENABL_ELF_SHA256}"
 fetch "${OPENABL_URL}/openabl-recovery-flashable-sm6115.zip" \
   "${CACHE_DIR}/openabl-${OPENABL_VERSION}/openabl-recovery-flashable-sm6115.zip" "${OPENABL_ZIP_SHA256}"
 cp "${CACHE_DIR}/openabl-${OPENABL_VERSION}"/* "${ESP}/openabl/"
+(cd "${ESP}/openabl" && sha256sum abl_signed-SM6115.elf >abl_signed-SM6115.elf.sha256)
 cat >"${ESP}/openabl/README.txt" <<TXT
 OpenABL ${OPENABL_VERSION} for Snapdragon 662 (SM6115) - https://github.com/OpenHandheldCollective/OpenABL
-Install once (Android keeps working), see docs/INSTALL.md:
-  fastboot flash abl_a abl_signed-SM6115.elf
-  fastboot flash abl_b abl_signed-SM6115.elf
-or flash openabl-recovery-flashable-sm6115.zip from a custom recovery.
+Install once, Android keeps working. Full guide:
+https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/INSTALL.md
+
+A) Android with root: copy this "openabl" folder to the internal storage, then
+     su -c sh /sdcard/openabl/backup_abl.sh
+     su -c sh /sdcard/openabl/flash_abl.sh
+   (restore_abl.sh puts the stock bootloader back)
+B) Unlocked bootloader, from a PC:
+     fastboot flash abl_a abl_signed-SM6115.elf
+     fastboot flash abl_b abl_signed-SM6115.elf
+C) Custom recovery: install openabl-recovery-flashable-sm6115.zip
+
+Then power on holding Volume Down: Boot mode -> Linux, Start.
 TXT
 esp_used=$(du -sm "${ESP}" | cut -f1)
 ESP_MB="${IMAGE_ESP_MB:-512}"

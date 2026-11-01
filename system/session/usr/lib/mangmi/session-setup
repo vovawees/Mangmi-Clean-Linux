@@ -12,6 +12,13 @@ while read -r sys; do
   [[ -z $sys || $sys == \#* ]] || mkdir -p "$roms/$sys"
 done </usr/share/mangmi/rom-systems.list 2>/dev/null
 
+# Standalone emulators look for BIOS files in their own folders: point those
+# at ~/BIOS too (unless the user has set them up already).
+for d in "$HOME/.local/share/duckstation/bios" "$HOME/.config/PCSX2/bios" "$HOME/.config/ARMSX2/bios"; do
+  [[ -e $d || -L $d ]] && continue
+  mkdir -p "${d%/*}" && ln -s "$HOME/BIOS" "$d"
+done
+
 # Default emulators where ES-DE's own first choice is not shipped (set once,
 # changeable in ES-DE under Other settings -> Alternative emulators)
 gl="$HOME/ES-DE/gamelists"

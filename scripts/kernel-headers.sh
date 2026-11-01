@@ -18,7 +18,7 @@ cp -a include "${dst}/"
 cp -a arch/arm64/include "${dst}/arch/arm64/"
 install -Dt "${dst}/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s 2>/dev/null || true
 for d in tools/objtool/objtool tools/bpf/resolve_btfids/resolve_btfids; do
-  [[ -x "$d" ]] && install -Dt "${dst}/$(dirname "$d")" "$d"
+  if [[ -x "$d" ]]; then install -Dt "${dst}/$(dirname "$d")" "$d"; fi
 done
 install -Dt "${dst}/drivers/md" -m644 drivers/md/*.h
 install -Dt "${dst}/net/mac80211" -m644 net/mac80211/*.h

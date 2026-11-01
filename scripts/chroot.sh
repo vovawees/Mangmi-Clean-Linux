@@ -80,7 +80,7 @@ chroot_env() {
   for v in JOBS FORCE IMAGE_FLAVOUR DEFAULT_MODEL DISTRO_VERSION DEFAULT_USER DEFAULT_PASSWORD \
            DEFAULT_HOSTNAME DEFAULT_LOCALE DEFAULT_TIMEZONE IMAGE_ROOT_MB IMAGE_COMPRESS \
            USE_CCACHE KERNEL_SCHED_EXT MCL_KERNEL_PKGREL GITHUB_ACTIONS CI; do
-    [[ -n "${!v:-}" ]] && printf '%s=%s\n' "${v}" "${!v}"
+    if [[ -n "${!v:-}" ]]; then printf '%s=%s\n' "${v}" "${!v}"; fi
   done
 }
 run_root() {

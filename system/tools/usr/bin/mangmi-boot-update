@@ -81,7 +81,7 @@ write_entry() { # file title sort-key extra-options
 
 write_entry mangmi.conf "$name" mangmi-1
 write_entry mangmi-safe.conf "$name (safe mode: text console)" mangmi-2 \
-  "systemd.unit=multi-user.target systemd.mask=mangmi-session@.service loglevel=6"
+  "systemd.unit=multi-user.target systemd.mask=mangmi-session@.service systemd.wants=getty@tty1.service loglevel=6"
 
 # With a pinned model, keep one entry per other board revision in the OpenABL
 # menu, so a card prepared for the wrong revision can still be booted.
