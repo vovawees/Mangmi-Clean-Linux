@@ -8,7 +8,7 @@
 pkgname=mangmi-firmware
 _commit=925dfb5efbe5d6c3ca654f81e3e1f367f8492777
 pkgver=20261101
-pkgrel=1
+pkgrel=2
 pkgdesc='Firmware blobs for the Mangmi Air X (SM6115) from ROCKNIX extra-firmware'
 arch=(any)
 url='https://github.com/ROCKNIX/extra-firmware'
@@ -27,4 +27,19 @@ package() {
   rm -rf "$pkgdir"/usr/lib/firmware/ath10k/WCN3990/hw1.0/{mangmi-air-y,retroid-duolite}
   rm -rf "$pkgdir"/usr/lib/firmware/qca/retroid-duolite
   rm -rf "$pkgdir"/usr/lib/firmware/qcom/sm6125
+
+  # Files that linux-firmware ships as well (e.g. the WCN3950 Bluetooth patch
+  # and NVM, which ROCKNIX takes from the device) go to firmware/updates: the
+  # kernel searches that directory first and pacman sees no file conflict.
+  cd "$pkgdir/usr/lib/firmware"
+  local f
+  find . -type f ! -path './updates/*' | sort | while read -r f; do
+    f=${f#./}
+    if [[ -e /usr/lib/firmware/$f || -e /usr/lib/firmware/$f.zst || -e /usr/lib/firmware/$f.xz ]]; then
+      echo "  -> $f overrides linux-firmware (firmware/updates)"
+      install -Dm644 "$f" "updates/$f"
+      rm -f "$f"
+    fi
+  done
+  find . -mindepth 1 -type d -empty -delete
 }

@@ -16,7 +16,6 @@ libretro-sameboy
 libretro-mgba
 libretro-genesis-plus-gx
 libretro-picodrive
-libretro-pcsx-rearmed
 libretro-beetle-pce-fast
 libretro-beetle-supergrafx
 libretro-mupen64plus-next

@@ -17,8 +17,11 @@ FLAVOUR="${IMAGE_FLAVOUR:-full}"
 NAME="mangmi-clean-linux-${DISTRO_VERSION}-${FLAVOUR}"
 OUT=/build/out/images
 W=/build/work/image
-IMG="${W}/${NAME}.img"
+# The raw image is assembled in place in OUT (work/ and out/ are separate
+# mounts: moving a multi-GiB file between them would copy it).
+IMG="${OUT}/${NAME}.img"
 rm -rf "${W}"; mkdir -p "${W}" "${OUT}"
+rm -f "${IMG}" "${IMG}.xz" "${IMG}.xz.part" "${IMG}.sha256" "${IMG}.xz.sha256"
 
 # 1. boot partition contents -----------------------------------------------------------
 ESP="${W}/esp"
@@ -95,8 +98,7 @@ sfdisk -d "${IMG}" | sed 's/^/   /'
 
 # 6. compress ---------------------------------------------------------------------------------------
 if [[ "${IMAGE_COMPRESS:-xz}" == none ]]; then
-  mv -f "${IMG}" "${OUT}/"
-  final="${OUT}/${NAME}.img"
+  final="${IMG}"
 else
   log "compressing (xz -T0)"
   xz -T0 -6 -f -c "${IMG}" >"${OUT}/${NAME}.img.xz.part"

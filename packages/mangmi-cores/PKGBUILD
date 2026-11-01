@@ -3,7 +3,7 @@
 # official libretro buildbot (nightly aarch64 builds, checksummed at build time).
 pkgname=mangmi-cores
 pkgver=20261101
-pkgrel=1
+pkgrel=2
 pkgdesc="Extra libretro cores for Mangmi Clean Linux (arcade, 8/16-bit, handhelds, DOS, PSP, 3DS...)"
 arch=(aarch64)
 url="https://buildbot.libretro.com/nightly/linux/aarch64/latest/"
@@ -16,7 +16,8 @@ _cores=(
   gpsp handy pokemini                   # GBA (fast), Lynx, Pokemon Mini
   melondsds                             # Nintendo DS (melonDS DS, JIT)
   mednafen_wswan mednafen_ngp mednafen_vb
-  swanstation                           # PS1 (alternative)
+  pcsx_rearmed swanstation              # PS1 (ARM dynarec; the ALARM package
+                                        # clashes with libretro-core-info)
   ppsspp                                # PSP
   yabasanshiro                          # Saturn (ARM dynarec)
   citra                                 # 3DS (light games only)
