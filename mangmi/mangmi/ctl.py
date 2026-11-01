@@ -10,6 +10,7 @@ Examples:
   mangmi-ctl perf performance
   mangmi-ctl perf game ps2 max      # profile used while PS2 games run
   mangmi-ctl cycle led              # next LED mode (handy for hotkeys)
+  mangmi-ctl flash ff0000           # flash the sticks red (feedback for scripts)
 """
 from __future__ import annotations
 
@@ -90,6 +91,10 @@ def main(argv: list[str] | None = None) -> int:
     cy = sub.add_parser("cycle", help="switch to the next mode")
     cy.add_argument("what", choices=("led", "fan", "perf"))
 
+    fl = sub.add_parser("flash", help="flash the stick LEDs once")
+    fl.add_argument("color", nargs="?", default="ffffff")
+    fl.add_argument("--ms", type=int, default=600)
+
     gs = sub.add_parser("game-start", help="(used by launchers) a game started")
     gs.add_argument("system")
     gs.add_argument("--pid", type=int, default=None)
@@ -127,6 +132,8 @@ def main(argv: list[str] | None = None) -> int:
             key = {"led": "led.mode", "fan": "fan.mode", "perf": "perf.profile"}[a.what]
             r = _req({"cmd": "cycle", "key": key})
             print(f"{key} = {r['value']}")
+        elif a.cmd == "flash":
+            _req({"cmd": "flash", "color": a.color, "ms": a.ms})
         elif a.cmd == "game-start":
             _req({"cmd": "game-start", "system": a.system, "pid": a.pid or os.getppid(), "name": a.name})
         else:

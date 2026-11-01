@@ -1,0 +1,82 @@
+# Maintainer: Vovawe <vovawees@gmail.com>
+# Mangmi Clean Linux system integration, built straight from this repository:
+#   mangmi-tools      hardware daemon, hotkeys, device configs, boot entries, tuning
+# Files come from system/<package>/ (a tree mirroring /) and mangmi/ (Python).
+
+pkgbase=mangmi
+pkgname=(mangmi-tools)
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Mangmi Clean Linux system integration"
+arch=(any)
+url="https://github.com/vovawees/Mangmi-Clean-Linux"
+license=(GPL-2.0-or-later)
+makedepends=(git python)
+
+_root() { realpath "$startdir/../.."; }
+
+pkgver() {
+  local root v
+  root=$(_root)
+  v=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' "$root/mangmi/mangmi/__init__.py")
+  if git -C "$root" rev-parse --git-dir >/dev/null 2>&1; then
+    printf '%s.r%s.g%s' "$v" "$(git -C "$root" rev-list --count HEAD)" \
+      "$(git -C "$root" rev-parse --short=7 HEAD)"
+  else
+    printf '%s' "$v"
+  fi
+}
+
+check() {
+  cd "$(_root)/mangmi"
+  python -m unittest discover -s tests
+}
+
+# _tree NAME: copy system/NAME into the package, keeping modes
+_tree() {
+  local src
+  src="$(_root)/system/$1"
+  (cd "$src" && find . -type d -printf '%P\n') | while read -r d; do
+    [[ -n $d ]] && install -dm755 "$pkgdir/$d"
+  done
+  (cd "$src" && find . \( -type f -o -type l \) -printf '%P\n') | while read -r f; do
+    if [[ -L $src/$f ]]; then
+      cp -P "$src/$f" "$pkgdir/$f"
+    elif [[ -x $src/$f ]]; then
+      install -m755 "$src/$f" "$pkgdir/$f"
+    else
+      install -m644 "$src/$f" "$pkgdir/$f"
+    fi
+  done
+}
+
+_pywrapper() { # name module
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$1" <<PY
+#!/usr/bin/python3 -I
+import sys
+sys.path.insert(0, "/usr/lib/mangmi/python")
+from mangmi.$2 import main
+sys.exit(main())
+PY
+}
+
+package_mangmi-tools() {
+  pkgdesc="Mangmi Air X hardware support: stick RGB, fan, performance profiles, hotkeys, audio/input configs, boot entries"
+  depends=(python python-evdev brightnessctl inputplumber alsa-ucm-conf pipewire wireplumber
+           qrtr pd-mapper rmtfs tqftpserv mangmi-firmware zram-generator
+           cloud-guest-utils e2fsprogs util-linux systemd)
+  optdepends=('scx-scheds: sched_ext CPU schedulers (scx_lavd)'
+              'linux-mangmi: the matching kernel')
+  backup=()
+  install=mangmi-tools.install
+
+  _tree tools
+  local py="$pkgdir/usr/lib/mangmi/python"
+  install -dm755 "$py/mangmi"
+  install -m644 "$(_root)"/mangmi/mangmi/*.py "$py/mangmi/"
+  python -m compileall -q -d /usr/lib/mangmi/python "$py/mangmi"
+  _pywrapper mangmi-hwd hwd
+  _pywrapper mangmi-ctl ctl
+  _pywrapper mangmi-hotkeyd hotkeyd
+  install -Dm644 "$(_root)/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

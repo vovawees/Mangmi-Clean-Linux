@@ -1,0 +1,59 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# First boot: grow the root file system to the whole card and apply the
+# optional settings file /boot/mangmi-setup.txt (editable from any PC).
+set -u
+log() { echo "mangmi-firstboot: $*"; }
+
+grow_root() {
+  local src dev disk part
+  src=$(findmnt -no SOURCE /) || return 0
+  dev=${src##*/}
+  [[ -e /sys/class/block/$dev/partition ]] || return 0
+  part=$(</sys/class/block/"$dev"/partition)
+  disk=/dev/$(lsblk -no PKNAME "$src" | head -1)
+  log "growing $src (partition $part of $disk)"
+  growpart "$disk" "$part" && partx -u "$disk" 2>/dev/null
+  resize2fs "$src" || log "resize2fs failed"
+}
+
+setting() { # key -> value from mangmi-setup.txt
+  sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$SETUP" 2>/dev/null | tail -1 | tr -d '\r'
+}
+
+apply_setup() {
+  [[ -f $SETUP ]] || return 0
+  local v ssid psk user
+  user=$(awk -F: '$3 == 1000 {print $1}' /etc/passwd)
+  v=$(setting HOSTNAME); [[ -n $v ]] && hostnamectl set-hostname "$v" 2>/dev/null || { [[ -n $v ]] && echo "$v" >/etc/hostname; }
+  v=$(setting TIMEZONE); [[ -n $v && -e /usr/share/zoneinfo/$v ]] && ln -sf "/usr/share/zoneinfo/$v" /etc/localtime
+  v=$(setting LOCALE)
+  if [[ -n $v ]]; then
+    grep -q "^$v " /etc/locale.gen 2>/dev/null || { sed -i "s/^#\s*\($v .*\)/\1/" /etc/locale.gen; locale-gen >/dev/null; }
+    echo "LANG=$v" >/etc/locale.conf
+  fi
+  v=$(setting MODEL); [[ -n $v ]] && mangmi-boot-update --model "$v"
+  v=$(setting PASSWORD); [[ -n $v && -n $user ]] && echo "$user:$v" | chpasswd
+  v=$(setting SSH); [[ ${v,,} == yes ]] && systemctl enable sshd.service
+  ssid=$(setting WIFI_SSID) psk=$(setting WIFI_PASSWORD)
+  if [[ -n $ssid ]]; then
+    local f="/etc/NetworkManager/system-connections/$ssid.nmconnection"
+    umask 077
+    {
+      printf '[connection]\nid=%s\nuuid=%s\ntype=wifi\nautoconnect=true\n\n' "$ssid" "$(cat /proc/sys/kernel/random/uuid)"
+      printf '[wifi]\nmode=infrastructure\nssid=%s\n\n' "$ssid"
+      [[ -n $psk ]] && printf '[wifi-security]\nkey-mgmt=wpa-psk\npsk=%s\n\n' "$psk"
+      printf '[ipv4]\nmethod=auto\n\n[ipv6]\nmethod=auto\n'
+    } >"$f"
+    log "Wi-Fi network '$ssid' added"
+  fi
+  # never leave secrets on the FAT partition
+  sed -i -E 's/^([[:space:]]*(WIFI_PASSWORD|PASSWORD)[[:space:]]*=).*/\1/' "$SETUP"
+}
+
+SETUP=/boot/mangmi-setup.txt
+grow_root
+apply_setup
+mangmi-boot-update >/dev/null || :
+mkdir -p /var/lib/mangmi && touch /var/lib/mangmi/firstboot.done
+log "done"

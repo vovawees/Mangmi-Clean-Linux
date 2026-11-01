@@ -1,0 +1,12 @@
+[Unit]
+Description=Mangmi Air X system hotkeys (Guide + ...)
+Documentation=https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/HOTKEYS.md
+
+[Service]
+ExecStart=/usr/bin/mangmi-hotkeyd
+Restart=on-failure
+RestartSec=2
+Slice=session.slice
+
+[Install]
+WantedBy=default.target

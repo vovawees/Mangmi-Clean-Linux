@@ -1,0 +1,21 @@
+[Unit]
+Description=Mangmi Air X hardware daemon (stick lighting, fan, performance)
+Documentation=https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/HARDWARE.md
+After=systemd-modules-load.service systemd-udev-trigger.service
+
+[Service]
+ExecStart=/usr/bin/mangmi-hwd
+Restart=on-failure
+RestartSec=1
+StateDirectory=mangmi
+RuntimeDirectory=mangmi
+# keeps the factory fan trip points across daemon restarts
+RuntimeDirectoryPreserve=yes
+# stay off the big cores, they belong to the game
+CPUAffinity=0-3
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -188,6 +188,21 @@ class TestDaemon(FakeRootCase):
         d.handle({"cmd": "resume"})
         self.assertEqual(self.r("sys/class/leds/rgb:l1/brightness"), str(round(255 * 0.6)))
 
+    def test_feedback_flash(self):
+        d = hwd.Daemon()
+        r = d.handle({"cmd": "cycle", "key": "perf.profile", "feedback": True})
+        self.assertEqual(r["value"], "performance")
+        self.assertEqual(d.flash_color, (0xff, 0xaa, 0x00))
+        self.assertTrue(d.handle({"cmd": "flash", "color": "red", "ms": 200})["ok"])
+        self.assertEqual(d.flash_color, (255, 0, 0))
+
+        async def one_frame():
+            task = asyncio.create_task(d.led_loop())
+            await asyncio.sleep(0.05)
+            task.cancel()
+        asyncio.run(one_frame())
+        self.assertEqual(self.r("sys/class/leds/rgb:l1/multi_intensity"), "255 0 0")
+
     def test_socket_roundtrip(self):
         sock = os.path.join(self.root, "hwd.sock")
 

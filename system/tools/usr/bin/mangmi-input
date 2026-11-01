@@ -1,0 +1,44 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-input gamepad|desktop|toggle|status
+#   gamepad - built-in controls are a game pad (default, console mode)
+#   desktop - left stick = mouse, A/R2 = click, B/L2 = right click, D-pad = arrows
+# Hotkey: Guide + L3. Uses InputPlumber device profiles.
+set -u
+SVC=org.shadowblip.InputPlumber
+IFACE=org.shadowblip.Input.CompositeDevice
+GAMEPAD=/usr/share/inputplumber/profiles/default.yaml
+DESKTOP=/usr/share/inputplumber/profiles/mangmi-desktop.yaml
+STATE=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/mangmi-input
+
+devices() { busctl --list --no-pager tree "$SVC" 2>/dev/null | grep -E '/CompositeDevice[0-9]+$'; }
+
+load() { # profile-path
+  local d ok=1
+  for d in $(devices); do
+    busctl call "$SVC" "$d" "$IFACE" LoadProfilePath s "$1" >/dev/null 2>&1 && ok=0
+  done
+  return $ok
+}
+
+current() { [[ $(cat "$STATE" 2>/dev/null) == desktop ]] && echo desktop || echo gamepad; }
+
+set_mode() {
+  local profile=$GAMEPAD color=00ff40
+  [[ $1 == desktop ]] && profile=$DESKTOP color=a000ff
+  if load "$profile"; then
+    echo "$1" >"$STATE"
+    mangmi-ctl flash "$color" >/dev/null 2>&1 || :
+    echo "input: $1"
+  else
+    echo "mangmi-input: InputPlumber is not running" >&2
+    return 1
+  fi
+}
+
+case "${1:-status}" in
+  gamepad|desktop) set_mode "$1" ;;
+  toggle) [[ $(current) == desktop ]] && set_mode gamepad || set_mode desktop ;;
+  status) current ;;
+  *) echo "usage: mangmi-input gamepad|desktop|toggle|status" >&2; exit 2 ;;
+esac

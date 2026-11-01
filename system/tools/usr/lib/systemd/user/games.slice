@@ -1,0 +1,8 @@
+[Unit]
+Description=Games and emulators
+Documentation=https://github.com/vovawees/Mangmi-Clean-Linux/blob/main/docs/PERFORMANCE.md
+# Started by mangmi-run. Frozen during suspend, closed by Guide + Start (hold).
+
+[Slice]
+CPUWeight=1000
+IOWeight=1000

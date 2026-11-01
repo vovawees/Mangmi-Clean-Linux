@@ -1,0 +1,69 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-run - start a game the fast way.
+#
+#   mangmi-run [--system NAME] [--name TITLE] [--big|--all] -- COMMAND [ARGS...]
+#   mangmi-run --auto -- COMMAND [ARGS...]   (system taken from ~/ROMs/<system>/...)
+#   mangmi-run --stop                         close the running game (Guide + Start)
+#
+# * runs the game in games.slice: high CPU/IO weight, frozen during sleep
+# * heavy systems run on the Cortex-A73 big cores only (4-7)
+# * mangmi-hwd switches to the system's performance profile while it runs
+set -u
+system="" name="" cores="" auto=0
+ROMS=${MANGMI_ROMS:-$HOME/ROMs}
+
+while (($#)); do
+  case "$1" in
+    --system) system=${2:-}; shift 2 ;;
+    --name) name=${2:-}; shift 2 ;;
+    --big) cores=4-7; shift ;;
+    --all) cores=all; shift ;;
+    --auto) auto=1; shift ;;
+    --stop)
+      systemctl --user kill --signal=SIGTERM games.slice 2>/dev/null
+      sleep 3
+      exec systemctl --user stop games.slice ;;
+    --) shift; break ;;
+    -h|--help) sed -n '3,12p' "$0"; exit 0 ;;
+    *) break ;;
+  esac
+done
+(($#)) || { echo "usage: mangmi-run [options] -- command [args]" >&2; exit 2; }
+
+if ((auto)) && [[ -z $system ]]; then
+  for a in "$@"; do
+    case "$a" in
+      "$ROMS"/*/*)
+        rel=${a#"$ROMS"/}
+        system=${rel%%/*}
+        [[ -z $name ]] && { name=${a##*/}; name=${name%.*}; }
+        break ;;
+    esac
+  done
+fi
+system=${system,,}
+
+if [[ -z $cores ]]; then
+  case "$system" in
+    ps2|gc|wii|saturn|3ds|switch|psvita) cores=4-7 ;;
+  esac
+fi
+[[ $cores == all ]] && cores=""
+
+export TU_DEBUG=${TU_DEBUG:-noconform}
+export SDL_JOYSTICK_HIDAPI=${SDL_JOYSTICK_HIDAPI:-0}
+
+mangmi-ctl game-start "${system:-unknown}" --pid $$ ${name:+--name "$name"} >/dev/null 2>&1 || :
+trap 'mangmi-ctl game-end >/dev/null 2>&1 || :' EXIT
+
+cmd=("$@")
+[[ -n $cores ]] && cmd=(taskset -c "$cores" "${cmd[@]}")
+
+if [[ -S ${XDG_RUNTIME_DIR:-/nonexistent}/systemd/private ]]; then
+  unit=${system:-app}
+  systemd-run --user --scope --quiet --collect --slice=games.slice \
+    --unit="game-${unit//[^a-z0-9]/_}-$$" -- "${cmd[@]}"
+else
+  "${cmd[@]}"
+fi

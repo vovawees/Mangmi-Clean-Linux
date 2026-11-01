@@ -1,0 +1,29 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Suspend/resume handling for the Mangmi Air X.
+# Based on ROCKNIX's SM6115 system-sleep handler (GPL-2.0, https://github.com/ROCKNIX).
+BT_UART_WAKEUP=/sys/devices/platform/soc@0/4ac0000.geniqup/4a8c000.serial/power/wakeup
+
+games_freeze() {
+  for f in /sys/fs/cgroup/user.slice/user-*.slice/user@*.service/games.slice/cgroup.freeze; do
+    [ -w "$f" ] && echo "$1" >"$f"
+  done
+}
+
+bt_uart_wakeup() {
+  [ -e "$BT_UART_WAKEUP" ] && echo "$1" >"$BT_UART_WAKEUP"
+}
+
+case "$1" in
+  pre)
+    games_freeze 1
+    mangmi-ctl suspend >/dev/null 2>&1
+    bt_uart_wakeup disabled
+    ;;
+  post)
+    bt_uart_wakeup enabled
+    mangmi-ctl resume >/dev/null 2>&1
+    games_freeze 0
+    ;;
+esac
+exit 0

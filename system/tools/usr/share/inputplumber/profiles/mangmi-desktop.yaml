@@ -1,0 +1,134 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ShadowBlip/InputPlumber/main/rootfs/usr/share/inputplumber/schema/device_profile_v1.json
+# Mangmi Clean Linux: built-in controls as mouse + keyboard (desktop mode).
+# Guide, Select, L3 and R3 stay gamepad buttons so system hotkeys keep working.
+version: 1
+kind: DeviceProfile
+name: Mangmi Desktop
+description: Left stick = mouse, right stick / bumpers = scroll, A or R2 = left click, B or L2 = right click
+
+mapping:
+  - name: Mouse
+    source_event:
+      gamepad:
+        axis:
+          name: LeftStick
+    target_events:
+      - mouse:
+          motion:
+            speed_pps: 900
+
+  - name: Scroll up
+    source_event:
+      gamepad:
+        axis:
+          name: RightStick
+          direction: up
+          deadzone: 0.4
+    target_events:
+      - mouse:
+          wheel:
+            direction: up
+  - name: Scroll down
+    source_event:
+      gamepad:
+        axis:
+          name: RightStick
+          direction: down
+          deadzone: 0.4
+    target_events:
+      - mouse:
+          wheel:
+            direction: down
+  - name: Scroll up (R1)
+    source_event:
+      gamepad:
+        button: RightBumper
+    target_events:
+      - mouse:
+          wheel:
+            direction: up
+  - name: Scroll down (L1)
+    source_event:
+      gamepad:
+        button: LeftBumper
+    target_events:
+      - mouse:
+          wheel:
+            direction: down
+
+  - name: Left click (A)
+    source_event:
+      gamepad:
+        button: South
+    target_events:
+      - mouse:
+          button: Left
+  - name: Left click (R2)
+    source_event:
+      gamepad:
+        trigger:
+          name: RightTrigger
+          deadzone: 0.2
+    target_events:
+      - mouse:
+          button: Left
+  - name: Right click (B)
+    source_event:
+      gamepad:
+        button: East
+    target_events:
+      - mouse:
+          button: Right
+  - name: Right click (L2)
+    source_event:
+      gamepad:
+        trigger:
+          name: LeftTrigger
+          deadzone: 0.2
+    target_events:
+      - mouse:
+          button: Right
+
+  - name: Enter (Y)
+    source_event:
+      gamepad:
+        button: North
+    target_events:
+      - keyboard: KeyEnter
+  - name: Escape (X)
+    source_event:
+      gamepad:
+        button: West
+    target_events:
+      - keyboard: KeyEsc
+  - name: Application launcher (Start)
+    source_event:
+      gamepad:
+        button: Start
+    target_events:
+      - keyboard: KeyLeftMeta
+
+  - name: D-Up
+    source_event:
+      gamepad:
+        button: DPadUp
+    target_events:
+      - keyboard: KeyUp
+  - name: D-Down
+    source_event:
+      gamepad:
+        button: DPadDown
+    target_events:
+      - keyboard: KeyDown
+  - name: D-Left
+    source_event:
+      gamepad:
+        button: DPadLeft
+    target_events:
+      - keyboard: KeyLeft
+  - name: D-Right
+    source_event:
+      gamepad:
+        button: DPadRight
+    target_events:
+      - keyboard: KeyRight

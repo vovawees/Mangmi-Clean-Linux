@@ -26,6 +26,12 @@ log = logging.getLogger("mangmi.hwd")
 
 FPS = 25
 CYCLES = {"led.mode": LED_MODES, "fan.mode": FAN_MODES, "perf.profile": PERF_PROFILES}
+# Colour the sticks flash after a hotkey changed a setting (instant feedback in any app).
+FEEDBACK = {
+    "perf.profile": {"powersave": "00ff40", "balanced": "00aaff", "performance": "ffaa00", "max": "ff0000"},
+    "fan.mode": {"auto": "ffffff", "quiet": "00ff40", "cool": "00ffff", "max": "ff0000"},
+}
+FLASH_MS = 600
 
 
 class Daemon:
@@ -38,6 +44,8 @@ class Daemon:
         self.wake = asyncio.Event()
         self.t0 = time.monotonic()
         self.active_profile: str | None = None
+        self.flash_color: leds.RGB | None = None
+        self.flash_until = 0.0
 
     # ---- hardware application -------------------------------------------------
     def apply_led_static_parts(self) -> None:
@@ -88,6 +96,19 @@ class Daemon:
             return
         while True:
             led = self.state.data["led"]
+            now = time.monotonic()
+            if self.flash_color and now < self.flash_until and not self.suspended:
+                self.rings.set_brightness(max(led["brightness"], 50))
+                self.rings.show([self.flash_color] * len(self.rings.leds))
+                self.wake.clear()
+                try:
+                    await asyncio.wait_for(self.wake.wait(), self.flash_until - now)
+                except TimeoutError:
+                    pass
+                continue
+            if self.flash_color:
+                self.flash_color = None
+                self.apply_led_static_parts()
             if self.suspended or led["mode"] == "off":
                 self.rings.set_brightness(0)
                 animated = False
@@ -130,8 +151,19 @@ class Daemon:
             "leds": len(self.rings.leds),
         }
 
+    def flash(self, color: str, ms: int = FLASH_MS) -> None:
+        if not self.rings:
+            return
+        self.flash_color = leds.hex_to_rgb(color)
+        self.flash_until = time.monotonic() + max(100, min(int(ms), 5000)) / 1000
+        self.wake.set()
+
     def handle(self, msg: dict) -> dict:
         cmd = msg.get("cmd")
+        if cmd == "flash":
+            from .state import parse_color
+            self.flash(parse_color(msg.get("color", "ffffff")), msg.get("ms", FLASH_MS))
+            return {"ok": True}
         if cmd == "status":
             return {"ok": True, "status": self.status()}
         if cmd == "get":
@@ -154,6 +186,10 @@ class Daemon:
                 self.apply_fan()
             elif section == "perf":
                 self.apply_perf()
+            if msg.get("feedback"):
+                color = FEEDBACK.get(key, {}).get(new)
+                if color:
+                    self.flash(color)
             return {"ok": True, "key": key, "value": new}
         if cmd == "game-start":
             self.game = {"system": str(msg.get("system", "")).lower(), "pid": msg.get("pid"),

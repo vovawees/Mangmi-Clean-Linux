@@ -1,0 +1,13 @@
+_units="mangmi-hwd.service mangmi-firstboot.service"
+
+post_install() {
+  systemctl preset $_units >/dev/null 2>&1 || :
+  systemctl --global preset mangmi-hotkeyd.service >/dev/null 2>&1 || :
+  [ -f /boot/Image-mangmi ] && mangmi-boot-update >/dev/null 2>&1 || :
+}
+
+post_upgrade() {
+  systemctl --global preset mangmi-hotkeyd.service >/dev/null 2>&1 || :
+  systemctl try-restart mangmi-hwd.service >/dev/null 2>&1 || :
+  udevadm control --reload >/dev/null 2>&1 || :
+}

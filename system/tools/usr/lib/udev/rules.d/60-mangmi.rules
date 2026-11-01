@@ -1,0 +1,15 @@
+# Mangmi Air X device rules (several taken from ROCKNIX SM6115 quirks).
+
+# SD card / eMMC: BFQ keeps the UI responsive while games stream from slow cards,
+# large read-ahead speeds up ROM/ISO loading.
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="mmcblk[0-9]", ATTR{queue/scheduler}="bfq", ATTR{queue/read_ahead_kb}="1024"
+# USB / NVMe adapters: no scheduler overhead
+ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]|nvme[0-9]n[0-9]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
+
+# USB controller runtime power management
+ACTION=="add", SUBSYSTEM=="platform", KERNEL=="4ef8800.usb|4e00000.usb", TEST=="power/control", ATTR{power/control}="auto"
+# The xHCI controller wakes the device up spuriously
+ACTION=="add", SUBSYSTEM=="platform", DRIVER=="xhci-hcd", TEST=="power/wakeup", ATTR{power/wakeup}="disabled"
+
+# Built-in controls are read by mangmi-hotkeyd in the user session
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="gpio-keys", TAG+="uaccess"

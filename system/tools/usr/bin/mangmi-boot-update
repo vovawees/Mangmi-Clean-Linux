@@ -1,0 +1,92 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-boot-update - write the OpenABL boot entries (Boot Loader Specification).
+#
+# The kernel package installs /boot/Image-mangmi and /boot/dtbs/qcom/*.dtb onto
+# the EFI system partition (mounted at /boot). OpenABL boots the entry with the
+# device tree chosen under "Device model" in its menu (hold Volume Down at
+# power-on), exactly like ROCKNIX. Pin a model to put it into the entry itself:
+#
+#   mangmi-boot-update                 refresh entries (run by the kernel package)
+#   mangmi-boot-update --model mq66    always boot the MQ66 device tree
+#   mangmi-boot-update --model auto    use OpenABL's "Device model" setting again
+#
+# Kernel command line: /etc/kernel/cmdline (root=PARTUUID=... added if missing).
+set -euo pipefail
+
+ESP=${ESP:-/boot}
+CONF=${MANGMI_CONF:-/etc/mangmi}
+CMDLINE_FILE=${CMDLINE_FILE:-/etc/kernel/cmdline}
+MODULES=${MODULES:-/usr/lib/modules}
+MODELS="mq65 mq66 mq66b"
+
+die() { echo "mangmi-boot-update: $*" >&2; exit 1; }
+
+if [[ ${1:-} == --model ]]; then
+  [[ $EUID -eq 0 || -n ${MANGMI_CONF:-} ]] || die "run as root"
+  m=${2:-}
+  mkdir -p "$CONF"
+  if [[ $m == auto ]]; then
+    rm -f "$CONF/model"
+  elif [[ " $MODELS " == *" $m "* ]]; then
+    [[ -f $ESP/dtbs/qcom/sm6115-mangmi-air-x-$m.dtb ]] || die "no device tree for $m on $ESP"
+    echo "$m" >"$CONF/model"
+  else
+    die "unknown model '$m' (use: $MODELS auto)"
+  fi
+  shift 2
+fi
+
+[[ -f $ESP/Image-mangmi ]] || die "$ESP/Image-mangmi missing - is the EFI partition mounted on $ESP?"
+
+krel=""
+for d in "$MODULES"/*; do
+  [[ -f $d/pkgbase && $(<"$d/pkgbase") == linux-mangmi ]] && krel=${d##*/}
+done
+
+cmdline=""
+[[ -r $CMDLINE_FILE ]] && cmdline=$(tr -s '[:space:]' ' ' <"$CMDLINE_FILE")
+if [[ $cmdline != *root=* ]]; then
+  uuid=$(findmnt -no PARTUUID / 2>/dev/null || true)
+  [[ -n $uuid ]] || die "no root= in /etc/kernel/cmdline and cannot detect the root partition"
+  cmdline="root=PARTUUID=$uuid rw rootwait $cmdline"
+fi
+cmdline=${cmdline% }
+
+model=""
+[[ -r $CONF/model ]] && model=$(tr -d '[:space:]' <"$CONF/model")
+dt_line=""
+if [[ -n $model ]]; then
+  dtb="dtbs/qcom/sm6115-mangmi-air-x-$model.dtb"
+  [[ -f $ESP/$dtb ]] || die "$ESP/$dtb not found"
+  dt_line="devicetree /$dtb"
+fi
+
+. /etc/os-release 2>/dev/null || true
+name=${NAME:-Mangmi Clean Linux}
+entries=$ESP/loader/entries
+mkdir -p "$entries"
+
+write_entry() { # file title sort-key extra-options
+  local tmp="$entries/.$1.tmp"
+  {
+    echo "title      $2"
+    [[ -n $krel ]] && echo "version    $krel"
+    echo "sort-key   $3"
+    echo "linux      /Image-mangmi"
+    [[ -n $dt_line ]] && echo "$dt_line"
+    echo "options    $cmdline${4:+ $4}"
+  } >"$tmp"
+  mv -f "$tmp" "$entries/$1"
+}
+
+write_entry mangmi.conf "$name" mangmi-1
+write_entry mangmi-safe.conf "$name (safe mode: text console)" mangmi-2 \
+  "systemd.unit=multi-user.target systemd.mask=mangmi-session@.service loglevel=6"
+
+tmp=$ESP/loader/.loader.conf.tmp
+printf 'default mangmi.conf\n' >"$tmp"
+mv -f "$tmp" "$ESP/loader/loader.conf"
+sync -f "$ESP/loader/loader.conf" 2>/dev/null || sync
+
+echo "mangmi-boot-update: kernel ${krel:-?}, device tree: ${model:-OpenABL Device model setting}"
