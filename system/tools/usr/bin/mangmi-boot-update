@@ -30,10 +30,11 @@ MODELS="mq65 mq66 mq66b"
 
 die() { echo "mangmi-boot-update: $*" >&2; exit 1; }
 
-# On the installed system (not for another ESP, not in the image build) the
-# boot partition is mounted for this run, and root= follows the root partition.
+# On the installed system (not for another ESP, not in the image build - where
+# systemd may not be installed yet) the boot partition is mounted for this
+# run, and root= follows the root partition.
 own=""
-if [[ $ESP == /boot && $CMDLINE_FILE == /etc/kernel/cmdline ]] &&
+if [[ $ESP == /boot && $CMDLINE_FILE == /etc/kernel/cmdline ]] && command -v systemd-detect-virt >/dev/null &&
   ! systemd-detect-virt -q --chroot 2>/dev/null && ! systemd-detect-virt -q --container 2>/dev/null; then
   own=1
 fi

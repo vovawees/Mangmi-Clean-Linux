@@ -108,6 +108,12 @@ if run mount 2>/dev/null; then fail "mount without a boot partition succeeded"; 
 grep -q automount "$t/fstab" && fail "automount left in fstab (no boot partition)"
 grep -q "8c6e3b22-a25d-481f-3f96-35b87930fda0  /boot\|8c6e3b22-a25d-481f-3f96-35b87930fda0 /boot" "$t/fstab" || fail "unknown /boot partition was replaced"
 
+# the image build (a chroot, or systemd not installed yet): nothing is mounted
+mkdir -p "$t/nosd"
+for c in findmnt grep; do ln -s "$(command -v "$c")" "$t/nosd/$c"; done
+ESP_DIR=$t/boot FSTAB=$t/fstab MANGMI_ESP_RUN=$t/run PATH=$t/nosd "$esp_cmd" mount || fail "failed in the image build"
+mountpoint -q "$t/boot" && fail "mounted in the image build"
+
 # mount / umount; without FAT in this kernel a bind mount stands in for it
 root=${a}p2
 real=1

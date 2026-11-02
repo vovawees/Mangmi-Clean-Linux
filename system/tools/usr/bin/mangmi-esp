@@ -21,8 +21,8 @@
 # last the partition OpenABL booted from (LoaderDevicePartUUID) are tried.
 # The /boot line of /etc/fstab is corrected when it names another partition or
 # an automount, the / line when it names another partition than the root's.
-# In a chroot or container (the image build) /boot is a plain directory: then
-# every command succeeds without mounting anything.
+# In a chroot or container (the image build, also before systemd is installed)
+# /boot is a plain directory: then every command succeeds without mounting.
 set -euo pipefail
 
 ESP_DIR=${ESP_DIR:-/boot} # where to mount (tests use another directory)
@@ -37,9 +37,11 @@ LOADER_VAR=/sys/firmware/efi/efivars/LoaderDevicePartUUID-4a67b082-0a4c-41cf-b6c
 
 say() { echo "mangmi-esp: $*" >&2; }
 
-# image build (chroot, container): nothing to mount
+# image build (chroot, container - or systemd is not even installed yet, when
+# pacstrap runs a kernel install script early): nothing to mount
 virtual() {
   [[ -z $ROOT_DEV ]] || return 1
+  command -v systemd-detect-virt >/dev/null || return 0
   systemd-detect-virt -q --chroot 2>/dev/null || systemd-detect-virt -q --container 2>/dev/null
 }
 
