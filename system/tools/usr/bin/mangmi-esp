@@ -1,0 +1,249 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# mangmi-esp - this system's boot partition (MANGMI_BOOT: the EFI system
+# partition with the kernel, the device trees and the boot entries) on /boot.
+#
+# Nothing during boot needs the boot partition - OpenABL has read it before
+# Linux starts - so it is not mounted then, and a missing or changed partition
+# can no longer hold up the boot (with an automount every sandboxed service
+# touched /boot and waited 90 s for it: D-Bus failed to start). It is mounted
+# on demand instead: around package updates that change /boot (pacman hooks),
+# by mangmi-boot-update, mangmi-update and the first boot setup.
+#
+#   mangmi-esp find      print the boot partition's device
+#   mangmi-esp mount     mount it on /boot (if nothing is mounted there yet)
+#   mangmi-esp umount    unmount it, if "mangmi-esp mount" mounted it
+#   mangmi-esp fstab     correct /etc/fstab only (see below)
+#
+# The boot partition is the FAT partition on the disk of the root file system
+# (microSD card, eMMC, the disk image inside userdata) of the EFI system
+# partition type or called MANGMI_BOOT. Then the /boot line of /etc/fstab and
+# last the partition OpenABL booted from (LoaderDevicePartUUID) are tried.
+# The /boot line of /etc/fstab is corrected when it names another partition or
+# an automount, the / line when it names another partition than the root's.
+# In a chroot or container (the image build) /boot is a plain directory: then
+# every command succeeds without mounting anything.
+set -euo pipefail
+
+ESP_DIR=${ESP_DIR:-/boot} # where to mount (tests use another directory)
+FSTAB=${FSTAB:-/etc/fstab}
+RUN=${MANGMI_ESP_RUN:-/run/mangmi}
+# the root file system's block device, for tests (default: the one of /)
+ROOT_DEV=${MANGMI_ESP_ROOT:-}
+ESP_TYPE=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+OPTS=rw,noatime,fmask=0022,dmask=0022,utf8,errors=remount-ro
+FSTAB_EXTRA=noauto,nofail,x-systemd.device-timeout=5s
+LOADER_VAR=/sys/firmware/efi/efivars/LoaderDevicePartUUID-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f
+
+say() { echo "mangmi-esp: $*" >&2; }
+
+# image build (chroot, container): nothing to mount
+virtual() {
+  [[ -z $ROOT_DEV ]] || return 1
+  systemd-detect-virt -q --chroot 2>/dev/null || systemd-detect-virt -q --container 2>/dev/null
+}
+
+# root_dev: the block device holding /, empty when there is none
+root_dev() {
+  local src
+  if [[ -n $ROOT_DEV ]]; then echo "$ROOT_DEV"; return 0; fi
+  src=$(findmnt -nvo SOURCE / 2>/dev/null) || return 0
+  if [[ -b $src ]]; then echo "$src"; fi
+}
+
+# probe DEV: low-level blkid probe (file system and partition entry)
+probe() { blkid -p -o export "$1" 2>/dev/null || :; }
+# field KEY PROBE
+field() { sed -n "s/^$1=//p" <<<"$2" | head -n1; }
+
+# is_esp DEV: a FAT file system on a partition of the EFI system partition
+# type, or named / labelled MANGMI_BOOT
+is_esp() {
+  local p t
+  [[ -b $1 ]] || return 1
+  p=$(probe "$1")
+  [[ $(field TYPE "$p") == vfat ]] || return 1
+  t=$(field PART_ENTRY_TYPE "$p")
+  t=${t,,}
+  [[ $t == "$ESP_TYPE" || $t == 0xef || $(field PART_ENTRY_NAME "$p") == MANGMI_BOOT ||
+     $(field LABEL "$p") == MANGMI_BOOT ]]
+}
+
+# resolve SPEC: /dev/NAME of an fstab device (PARTUUID=, UUID=, LABEL=, /dev/...)
+resolve() {
+  local d
+  case $1 in
+    /dev/*) d=$1 ;;
+    *=*) d=$(findfs "$1" 2>/dev/null) || return 1 ;;
+    *) return 1 ;;
+  esac
+  [[ -b $d ]] && readlink -f "$d"
+}
+
+# on_root_disk ROOT: the boot partition on the disk of the root file system;
+# with several, the one called MANGMI_BOOT
+on_root_disk() {
+  local name disk p dev first=""
+  name=$(basename "$(readlink -f "$1")")
+  [[ -e /sys/class/block/$name/partition ]] || return 1
+  disk=$(basename "$(dirname "$(readlink -f "/sys/class/block/$name")")")
+  for p in /sys/class/block/"$disk"/"$disk"*; do
+    [[ -e $p/partition ]] || continue
+    dev=/dev/${p##*/}
+    is_esp "$dev" || continue
+    if [[ $(field PART_ENTRY_NAME "$(probe "$dev")") == MANGMI_BOOT ]]; then
+      echo "$dev"; return 0
+    fi
+    first=${first:-$dev}
+  done
+  [[ -n $first ]] && echo "$first"
+}
+
+# fstab_spec DIR: the device column of the fstab line for DIR
+fstab_spec() {
+  [[ -r $FSTAB ]] || return 1
+  awk -v d="$1" '$1 !~ /^#/ && $2 == d {print $1; exit}' "$FSTAB"
+}
+
+# loader_part: the partition OpenABL booted from
+loader_part() {
+  local u
+  [[ -r $LOADER_VAR ]] || return 1
+  u=$(dd if="$LOADER_VAR" bs=4 skip=1 2>/dev/null | tr -d '\000' | tr 'A-F' 'a-f') || return 1
+  [[ $u =~ ^[0-9a-f-]{36}$ ]] && resolve "PARTUUID=$u"
+}
+
+# find_esp ROOT: this system's boot partition
+find_esp() {
+  local d spec
+  if d=$(on_root_disk "$1") && [[ -n $d ]]; then echo "$d"; return 0; fi
+  if spec=$(fstab_spec /boot) && [[ -n $spec ]] && d=$(resolve "$spec") && is_esp "$d"; then
+    echo "$d"; return 0
+  fi
+  if d=$(loader_part) && is_esp "$d"; then echo "$d"; return 0; fi
+  return 1
+}
+
+# fix_fstab ROOT ESP: the / line names ROOT and the /boot line ESP (by
+# PARTUUID), without automount and with nofail; ESP may be empty
+fix_fstab() {
+  local root=$1 esp=$2 rspec="" espec="" u tmp changed
+  [[ -f $FSTAB && -w $FSTAB ]] || return 0
+  u=$(field PART_ENTRY_UUID "$(probe "$root")")
+  if [[ -n $u ]]; then
+    rspec=$(fstab_spec /) || rspec=""
+    if [[ -n $rspec && $(resolve "$rspec" || :) != "$(readlink -f "$root")" ]]; then rspec="PARTUUID=$u"; else rspec=""; fi
+  fi
+  if [[ -n $esp ]]; then
+    u=$(field PART_ENTRY_UUID "$(probe "$esp")")
+    [[ -n $u ]] && espec="PARTUUID=$u"
+  fi
+  tmp=$(mktemp "$FSTAB.XXXXXX")
+  awk -v dir=/boot -v rspec="$rspec" -v espec="$espec" -v opts="$OPTS,$FSTAB_EXTRA" '
+    function fix_opts(o,   n, a, i, out, has_nofail, has_timeout) {
+      n = split(o, a, ",")
+      out = ""
+      for (i = 1; i <= n; i++) {
+        if (a[i] == "x-systemd.automount" || a[i] ~ /^x-systemd\.idle-timeout=/) continue
+        if (a[i] == "nofail") has_nofail = 1
+        if (a[i] ~ /^x-systemd\.device-timeout=/) has_timeout = 1
+        out = out (out == "" ? "" : ",") a[i]
+      }
+      if (!has_nofail) out = out ",nofail"
+      if (!has_timeout) out = out ",x-systemd.device-timeout=5s"
+      return out
+    }
+    $1 !~ /^#/ && NF >= 4 && $2 == "/" && rspec != "" && $1 != rspec {
+      $1 = rspec; changed = 1
+    }
+    $1 !~ /^#/ && NF >= 4 && $2 == dir {
+      seen = 1
+      o = fix_opts($4)
+      if (o != $4) { $4 = o; changed = 1 }
+      if (espec != "" && $1 != espec) { $1 = espec; changed = 1 }
+    }
+    { print }
+    END {
+      if (!seen && espec != "") {
+        printf "%s  %s  vfat  %s  0  2\n", espec, dir, opts; changed = 1
+      }
+      exit !changed
+    }' "$FSTAB" >"$tmp" && changed=1 || changed=""
+  if [[ -n $changed ]]; then
+    [[ -e $FSTAB.mangmi-old ]] || cp -p "$FSTAB" "$FSTAB.mangmi-old"
+    chmod --reference="$FSTAB" "$tmp" 2>/dev/null || chmod 644 "$tmp"
+    mv -f "$tmp" "$FSTAB"
+    say "corrected $FSTAB (the old one is $FSTAB.mangmi-old)"
+  else
+    rm -f "$tmp"
+  fi
+}
+
+lock() {
+  mkdir -p "$RUN"
+  exec 9>"$RUN/esp.lock"
+  flock -w 60 9 || :
+}
+
+cmd_find() {
+  local root
+  root=$(root_dev)
+  [[ -n $root ]] || { say "/ is not on a block device"; return 1; }
+  find_esp "$root" || { say "no boot partition found for $root"; return 1; }
+}
+
+cmd_mount() {
+  local root esp
+  mountpoint -q "$ESP_DIR" && return 0
+  virtual && return 0
+  root=$(root_dev)
+  [[ -n $root ]] || return 0 # not on a block device: /boot is a directory
+  lock
+  mountpoint -q "$ESP_DIR" && return 0
+  if ! esp=$(find_esp "$root"); then
+    say "boot partition not found: no FAT partition of the EFI type or called MANGMI_BOOT"
+    say "next to $root, and the one in $FSTAB ($(fstab_spec /boot || echo none)) is not there"
+    fix_fstab "$root" ""
+    return 1
+  fi
+  fix_fstab "$root" "$esp"
+  mkdir -p "$ESP_DIR"
+  if command -v fsck.fat >/dev/null; then fsck.fat -a "$esp" >/dev/null 2>&1 || :; fi
+  mount -t vfat -o "$OPTS" "$esp" "$ESP_DIR" || { say "cannot mount $esp on $ESP_DIR"; return 1; }
+  echo "$esp" >"$RUN/esp-mounted"
+}
+
+cmd_umount() {
+  [[ -f $RUN/esp-mounted ]] || return 0
+  lock
+  [[ -f $RUN/esp-mounted ]] || return 0
+  if mountpoint -q "$ESP_DIR"; then
+    sync -f "$ESP_DIR" 2>/dev/null || sync
+    if ! umount "$ESP_DIR"; then
+      say "$ESP_DIR is busy, left mounted"
+      return 0
+    fi
+  fi
+  rm -f "$RUN/esp-mounted"
+}
+
+cmd_fstab() {
+  local root esp=""
+  virtual && return 0
+  root=$(root_dev)
+  [[ -n $root ]] || return 0
+  if mountpoint -q "$ESP_DIR"; then
+    esp=$(readlink -f "$(findmnt -nvo SOURCE "$ESP_DIR")")
+    is_esp "$esp" || esp=""
+  fi
+  [[ -n $esp ]] || esp=$(find_esp "$root") || esp=""
+  fix_fstab "$root" "$esp"
+}
+
+case ${1:-} in
+  find) cmd_find ;;
+  mount) cmd_mount ;;
+  umount | unmount) cmd_umount ;;
+  fstab) cmd_fstab ;;
+  *) sed -n '13,16p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+esac

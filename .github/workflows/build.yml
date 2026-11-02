@@ -53,6 +53,10 @@ jobs:
         run: cd mangmi && python3 -m unittest discover -s tests -v
       - name: Boot entry tests
         run: bash tests/boot-update.sh
+      - name: Boot partition tests (loop devices)
+        run: |
+          command -v mkfs.fat >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq dosfstools >/dev/null; }
+          sudo bash tests/esp.sh
       - name: Package lists
         run: |
           for f in config/packages/*.list; do
