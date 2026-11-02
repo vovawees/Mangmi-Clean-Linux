@@ -3,7 +3,9 @@
 # mangmi-boot-update - write the OpenABL boot entries (Boot Loader Specification).
 #
 # The kernel package installs /boot/Image-mangmi and /boot/dtbs/qcom/*.dtb onto
-# the EFI system partition (mounted at /boot). OpenABL boots the entry with the
+# the EFI system partition (MANGMI_BOOT). It is not mounted during boot:
+# mangmi-esp mounts it on /boot for the run when nothing is mounted there yet,
+# and unmounts it afterwards. OpenABL boots the entry with the
 # device tree chosen under "Device model" in its menu (hold Volume Down at
 # power-on), exactly like ROCKNIX. Pin a model to put it into the entry itself:
 #
@@ -11,7 +13,9 @@
 #   mangmi-boot-update --model mq66    always boot the MQ66 device tree
 #   mangmi-boot-update --model auto    use OpenABL's "Device model" setting again
 #
-# Kernel command line: /etc/kernel/cmdline (root=PARTUUID=... added if missing).
+# Kernel command line: /etc/kernel/cmdline (root=PARTUUID=... added if missing,
+# corrected if it names a partition that is not there - this system's own root
+# partition is known once it runs).
 # Every run also rebuilds the initramfs (mangmi-initramfs), which finds the
 # root file system on the SD card, the eMMC or inside the userdata partition.
 set -euo pipefail
@@ -25,6 +29,21 @@ INITRD=initramfs-mangmi.img
 MODELS="mq65 mq66 mq66b"
 
 die() { echo "mangmi-boot-update: $*" >&2; exit 1; }
+
+# On the installed system (not for another ESP, not in the image build) the
+# boot partition is mounted for this run, and root= follows the root partition.
+own=""
+if [[ $ESP == /boot && $CMDLINE_FILE == /etc/kernel/cmdline ]] &&
+  ! systemd-detect-virt -q --chroot 2>/dev/null && ! systemd-detect-virt -q --container 2>/dev/null; then
+  own=1
+fi
+# a file system on $ESP, not only an automount point (older /etc/fstab)
+esp_mounted() { findmnt -rn -o FSTYPE -M "$ESP" 2>/dev/null | grep -qvx autofs; }
+if [[ -n $own ]] && ! esp_mounted && command -v mangmi-esp >/dev/null; then
+  [[ $EUID -eq 0 ]] || die "run as root"
+  mangmi-esp mount || die "cannot mount the boot partition on $ESP"
+  trap 'mangmi-esp umount' EXIT
+fi
 
 if [[ ${1:-} == --model ]]; then
   [[ $EUID -eq 0 || -n ${MANGMI_CONF:-} ]] || die "run as root"
@@ -50,6 +69,19 @@ done
 
 cmdline=""
 [[ -r $CMDLINE_FILE ]] && cmdline=$(tr -s '[:space:]' ' ' <"$CMDLINE_FILE")
+# root=PARTUUID= of a partition that is not there (the partition table was
+# rewritten, the system copied): this system's root partition instead
+if [[ -n $own && " $cmdline" =~ \ root=PARTUUID=([0-9A-Fa-f-]+) ]]; then
+  was=${BASH_REMATCH[1]}
+  src=$(findmnt -nvo SOURCE / 2>/dev/null || :)
+  now=""
+  [[ -b $src ]] && now=$(blkid -p -s PART_ENTRY_UUID -o value "$src" 2>/dev/null || :)
+  if [[ -n $now && ${was,,} != "${now,,}" && ! -e /dev/disk/by-partuuid/${was,,} ]]; then
+    sed -i "s/root=PARTUUID=$was/root=PARTUUID=$now/" "$CMDLINE_FILE"
+    cmdline=${cmdline/root=PARTUUID=$was/root=PARTUUID=$now}
+    echo "mangmi-boot-update: root=PARTUUID=$was is not there, now root=PARTUUID=$now ($src)" >&2
+  fi
+fi
 if [[ $cmdline != *root=* ]]; then
   uuid=$(findmnt -no PARTUUID / 2>/dev/null || true)
   [[ -n $uuid ]] || die "no root= in /etc/kernel/cmdline and cannot detect the root partition"

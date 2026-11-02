@@ -79,7 +79,15 @@ fi
 # new signing keys first, then everything else (a full upgrade also for
 # new packages: Arch does not support partial upgrades)
 pacman -Sy --noconfirm --needed archlinuxarm-keyring
-pacman -Su --noconfirm --needed "${extra[@]}"
+# the kernel goes onto the boot partition, which is mounted only for updates
+# (mangmi-esp, as the pacman hooks would): without it the kernel stays as it is
+hold=()
+if ! mangmi-esp mount; then
+  echo "Boot partition not found - the kernel is not updated this time." >&2
+  hold=(--ignore linux-mangmi)
+fi
+trap 'mangmi-esp umount >/dev/null 2>&1 || :' EXIT
+pacman -Su --noconfirm --needed "${hold[@]}" "${extra[@]}"
 if command -v flatpak >/dev/null; then
   flatpak update --system -y --noninteractive || :
 fi

@@ -1,7 +1,8 @@
 #!/bin/bash
 # SPDX-License-Identifier: GPL-2.0-or-later
 # First boot: grow the root file system to the whole card and apply the
-# optional settings file /boot/mangmi-setup.txt (editable from any PC).
+# optional settings file mangmi-setup.txt on the boot partition (editable from
+# any PC).
 set -u
 log() { echo "mangmi-firstboot: $*"; }
 
@@ -55,7 +56,14 @@ apply_setup() {
 
 SETUP=/boot/mangmi-setup.txt
 grow_root
-apply_setup
+# the boot partition is not mounted during boot: mounted here for the setup
+# file and the boot entries (mangmi-esp also corrects /etc/fstab if needed)
+if mangmi-esp mount; then
+  apply_setup
+else
+  log "boot partition not found: $SETUP not applied"
+fi
 mangmi-boot-update >/dev/null || :
+mangmi-esp umount || :
 mkdir -p /var/lib/mangmi && touch /var/lib/mangmi/firstboot.done
 log "done"

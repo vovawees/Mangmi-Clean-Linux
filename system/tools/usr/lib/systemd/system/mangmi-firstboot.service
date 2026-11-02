@@ -1,7 +1,7 @@
 [Unit]
 Description=Mangmi Clean Linux first boot setup (grow storage, apply mangmi-setup.txt)
 ConditionPathExists=!/var/lib/mangmi/firstboot.done
-After=local-fs.target boot.mount
+After=local-fs.target
 Before=NetworkManager.service systemd-user-sessions.service
 
 [Service]
