@@ -9,6 +9,11 @@ image (~2 MiB, zstd) holds /init (usr/lib/mangmi/initramfs/init), the static
 busybox, util-linux losetup with its libraries, and the firmware that
 built-in drivers request before the root file system is mounted (Adreno 610
 microcode and zap shader), so the GPU comes up at once.
+
+/etc/mangmi-root names this system's own root file system, so that /init
+finds it even when the boot loader passes some other root=: the root= of
+/etc/kernel/cmdline, the "/" line of /etc/fstab and the file system UUID
+(MANGMI_ROOT_FSUUID while the image is built, else that of the mounted /).
 """
 import os
 import stat
@@ -19,8 +24,8 @@ INIT = "/usr/lib/mangmi/initramfs/init"
 BUSYBOX = "/usr/bin/busybox"
 BINARIES = ["/usr/bin/losetup"]
 # /init needs the first line; the rest makes the rescue shell usable.
-APPLETS = """sh cat dd findfs mkdir mount mountpoint sleep switch_root tr umount usleep
-    blkid cp dmesg grep head less ls mv poweroff reboot rm sync vi""".split()
+APPLETS = """sh cat dd dmesg findfs grep mkdir mount mountpoint sleep switch_root tail tr
+    umount usleep blkid cp head less ls mv poweroff reboot rm sync vi""".split()
 FW_DIR = "/usr/lib/firmware"
 FIRMWARE = ["qcom/a630_sqe.fw", "qcom/sm6115/mangmi/a610_zap.mbn"]
 
@@ -90,6 +95,48 @@ def libraries(binary):
             for lib in libs if lib.startswith("/")]
 
 
+def root_ids():
+    """SPECs of this system's root file system, for /etc/mangmi-root."""
+    ids = []
+
+    def add(spec):
+        key, _, value = spec.partition("=")
+        if key in ("PARTUUID", "UUID"):
+            spec = key + "=" + value.lower()
+        if spec and ("=" in spec or spec.startswith("/dev/")) and spec not in ids:
+            ids.append(spec)
+
+    try:
+        with open("/etc/kernel/cmdline") as f:
+            for word in f.read().split():
+                if word.startswith("root="):
+                    add(word[5:])
+    except OSError:
+        pass
+    try:
+        with open("/etc/fstab") as f:
+            for line in f:
+                fields = line.split()
+                if len(fields) >= 2 and not fields[0].startswith("#") and fields[1] == "/":
+                    add(fields[0])
+    except OSError:
+        pass
+    fsuuid = os.environ.get("MANGMI_ROOT_FSUUID", "")
+    if not fsuuid:
+        # the running system - but only when / is the partition named above,
+        # not a build host's root seen from a chroot
+        try:
+            out = subprocess.run(["findmnt", "-n", "-o", "PARTUUID,UUID", "/"],
+                                 capture_output=True, text=True).stdout.split()
+        except OSError:
+            out = []
+        if len(out) == 2 and "PARTUUID=" + out[0].lower() in ids:
+            fsuuid = out[1]
+    if fsuuid:
+        add("UUID=" + fsuuid)
+    return ids
+
+
 def compress(data):
     try:
         from compression import zstd  # Python 3.14+
@@ -109,6 +156,7 @@ def build():
         c.symlink(link, target)
     with open(INIT, "rb") as f:
         c.file("init", f.read(), 0o755)
+    c.file("etc/mangmi-root", "".join(i + "\n" for i in root_ids()).encode())
     for binary in BINARIES:  # before the applets: these win over busybox
         copy(c, binary)
         for lib in libraries(binary):

@@ -79,7 +79,7 @@ printf '%s\n' "${NOEXTRACT}" >"${T}/root/noextract.conf"
 BUILD_ID="$(date -u +%Y%m%d%H%M)"
 GIT_COMMIT="$(git -C /build/src rev-parse --short=12 HEAD 2>/dev/null || echo unknown)"
 export DISTRO_NAME DISTRO_ID DISTRO_VERSION DEFAULT_USER DEFAULT_PASSWORD DEFAULT_HOSTNAME \
-       DEFAULT_LOCALE DEFAULT_TIMEZONE DEFAULT_MODEL ROOT_PARTUUID ESP_PARTUUID FLAVOUR \
+       DEFAULT_LOCALE DEFAULT_TIMEZONE DEFAULT_MODEL ROOT_PARTUUID ESP_PARTUUID ROOT_FSUUID FLAVOUR \
        BUILD_ID GIT_COMMIT \
        MANGMI_REPO_URL="${MANGMI_REPO_URL-https://github.com/vovawees/Mangmi-Clean-Linux/releases/download/repo}"
 arch-chroot "${T}" /root/rootfs-setup.sh

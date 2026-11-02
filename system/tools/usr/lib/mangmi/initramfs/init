@@ -11,8 +11,17 @@
 #    that partition goes onto a loop device with partition scanning (and
 #    direct I/O, so nothing is cached twice); the root partition is then
 #    found inside, under the same PARTUUID.
+#  * root= is not trusted blindly: a boot path may hand the kernel some other
+#    command line than the boot entry's. When root= is missing or not there
+#    after a second, this system's own root file system is looked for too, by
+#    the partition and file system UUIDs that mangmi-initramfs recorded in
+#    /etc/mangmi-root, and from 5 s on by its labels (MANGMI_ROOT) - the last
+#    resort, as every Mangmi install has them. A candidate that cannot be
+#    mounted or holds no init is skipped.
 #
 # Kernel command line: root= rootfstype= rootflags= rw|ro init= as usual, plus
+#   mangmi.root=SPEC         root file system to prefer over root= (PARTUUID=,
+#                            PARTLABEL=, UUID=, LABEL= or /dev/NAME)
 #   mangmi.rootwait=SECONDS  how long to look for the root file system (30)
 #   mangmi.shell             stop in a shell before starting the system
 # tests/initramfs.sh sources this file with MANGMI_INIT_TEST=1.
@@ -28,11 +37,18 @@ fi
 # util-linux losetup (direct I/O, sector size); busybox ash would run its own
 # applet for a bare "losetup"
 LOSETUP=${LOSETUP:-/usr/bin/losetup}
+NEW_ROOT=${NEW_ROOT:-/new_root}
+# this system's own root file system, one SPEC per line (mangmi-initramfs)
+ROOT_IDS=${ROOT_IDS:-/etc/mangmi-root}
+LABELS="PARTLABEL=MANGMI_ROOT LABEL=MANGMI_ROOT"
 
-root="" rootfstype="" rootflags="" mode=ro init=/sbin/init wait=30 shell="" quiet=""
-for arg in ${MANGMI_CMDLINE:-$(cat /proc/cmdline)}; do
+cmdline=${MANGMI_CMDLINE:-$(cat /proc/cmdline)}
+root="" mroot="" rootfstype="" rootflags="" mode=ro init=/sbin/init wait=30 shell="" quiet=""
+set -f
+for arg in $cmdline; do
   case $arg in
     root=*) root=${arg#root=} ;;
+    mangmi.root=*) mroot=${arg#mangmi.root=} ;;
     rootfstype=*) rootfstype=${arg#rootfstype=} ;;
     rootflags=*) rootflags=${arg#rootflags=} ;;
     init=*) init=${arg#init=} ;;
@@ -43,46 +59,63 @@ for arg in ${MANGMI_CMDLINE:-$(cat /proc/cmdline)}; do
     mangmi.shell | mangmi.shell=1) shell=1 ;;
   esac
 done
+set +f
+own=""
+[ -r "$ROOT_IDS" ] && own=$(cat "$ROOT_IDS")
+t=0 bad=" " kept=" " tried=" "
 
 say() { echo "mangmi-initramfs: $*"; }
 nap() { sleep 0.1 2>/dev/null || usleep 100000; }
 
-rescue() {
-  echo
-  say "$*"
-  echo "  root=$root"
-  echo "  Block devices:"
-  for d in /sys/class/block/*; do
-    [ -e "$d/dev" ] || continue
-    n=${d##*/} pn="" pu=""
-    while IFS='=' read -r k v; do
-      case $k in PARTNAME) pn=$v ;; PARTUUID) pu=$v ;; esac
-    done <"$d/uevent"
-    echo "    $n $(( $(cat "$d/size") / 2048 )) MiB ${pn:+name=$pn }${pu:+partuuid=$pu}"
-  done
-  echo
-  echo "  Rescue shell (exit to retry). Hold the power button to turn off."
-  sh
+# candidates: root file system SPECs to look for at poll $t, best first.
+# root= alone at first (its drive may still be probing), then this system's
+# own UUIDs too, and from 5 s on also the labels.
+candidates() {
+  echo $mroot $root
+  if [ "$t" -ge 10 ] || [ -z "$mroot$root" ]; then echo $own; fi
+  if [ "$t" -ge 50 ]; then echo $LABELS; fi
 }
 
-# by_partuuid UUID -> /dev/NAME of the partition with that GPT partition UUID
-by_partuuid() {
+# devices: "NAME PARTUUID PARTNAME" of every block device ("-" for none)
+devices() {
   for u in /sys/class/block/*/uevent; do
-    n="" p=""
+    n="" p="-" l="-"
     while IFS='=' read -r k v; do
-      case $k in DEVNAME) n=$v ;; PARTUUID) p=$v ;; esac
+      case $k in DEVNAME) n=$v ;; PARTUUID) p=$v ;; PARTNAME) l=$v ;; esac
     done <"$u"
-    [ -n "$p" ] && [ "$p" = "$1" ] && [ -b "/dev/$n" ] && { echo "/dev/$n"; return 0; }
+    [ -n "$n" ] && echo "$n $p $l"
   done
-  return 1
 }
 
-find_root() {
-  case $root in
-    PARTUUID=*) by_partuuid "$(echo "${root#PARTUUID=}" | tr 'A-F' 'a-f')" ;;
-    /dev/*) [ -b "$root" ] && echo "$root" ;;
-    *) findfs "$root" 2>/dev/null ;;   # UUID=, LABEL=
+# find_spec SPEC -> /dev/NAME of the block device SPEC names ($blk: devices)
+find_spec() {
+  case $1 in
+    PARTUUID=*) key=p want=$(echo "${1#PARTUUID=}" | tr 'A-F' 'a-f') ;;
+    PARTLABEL=*) key=l want=${1#PARTLABEL=} ;;
+    /dev/*) [ -b "$1" ] && echo "$1"; return ;;
+    UUID=* | LABEL=*) findfs "$1" 2>/dev/null; return ;;
+    *) return 1 ;;
   esac
+  echo "$blk" | {
+    while read -r n p l; do
+      if [ $key = p ]; then x=$p; else x=$l; fi
+      [ "$x" = "$want" ] && [ -b "/dev/$n" ] && { echo "/dev/$n"; exit 0; }
+    done
+    exit 1
+  }
+}
+
+# find_root: the first candidate present -> $dev, $spec
+find_root() {
+  blk=$(devices)
+  for spec in $(candidates); do
+    case $bad in *" $spec "*) continue ;; esac
+    # busybox findfs reads every block device: once a second is enough
+    case $spec in UUID=* | LABEL=*) [ $((t % 10)) = 0 ] || continue ;; esac
+    dev=$(find_spec "$spec") && return 0
+  done
+  dev="" spec=""
+  return 1
 }
 
 # A disk image inside a partition starts with a protective MBR and a GPT
@@ -94,16 +127,15 @@ gpt_sector() {
 }
 
 # attach_images: put partitions holding a disk image onto loop devices until
-# one contains the root partition; sets $dev. Runs in this shell (not in
-# $(...)) so that $tried survives between polls.
-tried=" "
+# one contains a candidate; sets $dev and $spec. Runs in this shell (not in
+# $(...)) so that $tried and $kept survive between polls.
 attach_images() {
   # Android's userdata first, then any other large (>= 1 GiB) partition.
   for pass in userdata other; do
     for d in /sys/class/block/*; do
       n=${d##*/}
       [ -e "$d/partition" ] || continue
-      case $tried in *" $n "*) continue ;; esac
+      case $tried$kept in *" $n "*) continue ;; esac
       pn=""
       while IFS='=' read -r k v; do [ "$k" = PARTNAME ] && pn=$v; done <"$d/uevent"
       if [ $pass = userdata ]; then [ "$pn" = userdata ] || continue; fi
@@ -112,7 +144,8 @@ attach_images() {
       ss=$(gpt_sector "/dev/$n") || continue
       loop=$($LOSETUP --find --show --partscan --direct-io=on --sector-size "$ss" "/dev/$n" 2>/dev/null) \
         || loop=$($LOSETUP --find --show --partscan --sector-size "$ss" "/dev/$n") || continue
-      if dev=$(find_root); then
+      if find_root; then
+        kept="$kept$n "
         [ -n "$quiet" ] || say "disk image in /dev/$n${pn:+ ($pn)} -> $loop"
         return 0
       fi
@@ -122,34 +155,79 @@ attach_images() {
   return 1
 }
 
+# use_root: mount $dev on $NEW_ROOT; fails unless it holds a system to start
+use_root() {
+  if ! mount ${rootfstype:+-t "$rootfstype"} -o "$mode${rootflags:+,$rootflags}" "$dev" "$NEW_ROOT" 2>/dev/null &&
+    ! mount -o "$mode" "$dev" "$NEW_ROOT" 2>/dev/null; then
+    say "cannot mount $dev ($spec), skipped"
+    return 1
+  fi
+  for i in "$init" /sbin/init; do
+    if [ -x "$NEW_ROOT$i" ] || [ -L "$NEW_ROOT$i" ]; then
+      [ "$i" = "$init" ] || say "$init not found on $dev, starting /sbin/init"
+      init=$i
+      case $spec in
+        "$root" | "$mroot") ;;
+        *) say "${root:+root=$root not found, }using this system's root file system $spec ($dev)" ;;
+      esac
+      [ -n "${MANGMI_INIT_TEST:-}" ] || echo "mangmi-initramfs: root file system $dev ($spec)" >/dev/kmsg 2>/dev/null
+      return 0
+    fi
+  done
+  umount "$NEW_ROOT"
+  say "no $init on $dev ($spec), skipped"
+  return 1
+}
+
+rescue() {
+  echo
+  say "$*"
+  echo "  Kernel command line: $cmdline"
+  echo "  Looked for: $(t=50; candidates | tr '\n' ' ')"
+  echo "  Disks and partitions of 256 MiB and more:"
+  small=0
+  for d in /sys/class/block/*; do
+    [ -e "$d/dev" ] || continue
+    n=${d##*/} pn="" pu=""
+    case $n in ram* | zram*) continue ;; esac
+    mib=$(( $(cat "$d/size") / 2048 ))
+    [ "$mib" -gt 0 ] || continue
+    if [ -e "$d/partition" ] && [ "$mib" -lt 256 ]; then small=$((small + 1)); continue; fi
+    while IFS='=' read -r k v; do
+      case $k in PARTNAME) pn=$v ;; PARTUUID) pu=$v ;; esac
+    done <"$d/uevent"
+    echo "    $n $mib MiB ${pn:+name=$pn }${pu:+partuuid=$pu}"
+  done
+  [ $small = 0 ] || echo "    + $small smaller partitions"
+  echo "  Storage messages:"
+  dmesg 2>/dev/null | grep -i -E 'mmc[0-9]|sdhci|ufs|blk_update|I/O error' | tail -n 5 | while read -r line; do
+    echo "    $line"
+  done
+  echo
+  echo "  Rescue shell (exit to retry). Hold the power button to turn off."
+  sh
+}
+
 [ -n "${MANGMI_INIT_TEST:-}" ] && return 0
-[ -n "$root" ] || rescue "no root= on the kernel command line"
 while :; do
-  dev="" t=0
+  t=0 tried=" "
   while [ $t -lt $((wait * 10)) ]; do
-    dev=$(find_root) && break
-    # partitions appear within a second or two; give a real partition a
-    # moment before looking for a disk image inside a partition
-    if [ $t -ge 5 ]; then attach_images && break; fi
-    [ $t = 50 ] && say "waiting for the root file system ($root)..."
+    # new candidates at 1 s and 5 s: look into the disk images again
+    case $t in 10 | 50) tried=" " ;; esac
+    if find_root || { [ $t -ge 5 ] && attach_images; }; then
+      use_root && break 2
+      bad="$bad$spec "
+      continue
+    fi
+    [ $t = 50 ] && say "waiting for the root file system: $(candidates | tr '\n' ' ')"
     nap; t=$((t + 1))
   done
-  if [ -n "$dev" ]; then
-    if mount ${rootfstype:+-t "$rootfstype"} -o "$mode${rootflags:+,$rootflags}" "$dev" /new_root; then
-      [ -x "/new_root$init" ] || [ -L "/new_root$init" ] && break
-      umount /new_root
-      rescue "$init not found on $dev"
-    else
-      rescue "cannot mount $dev"
-    fi
-  else
-    rescue "root file system not found"
-  fi
-  tried=" "
+  rescue "root file system not found"
+  bad=" "
 done
 
-[ -n "$shell" ] && { say "mangmi.shell: the root file system is on /new_root"; sh; }
+[ -n "$shell" ] && { say "mangmi.shell: the root file system is on $NEW_ROOT"; sh; }
 for m in /dev /proc /sys; do
-  mount -o move "$m" "/new_root$m" 2>/dev/null || umount -l "$m"
+  mount -o move "$m" "$NEW_ROOT$m" 2>/dev/null || umount -l "$m"
 done
-exec switch_root /new_root "$init" "$@"
+exec switch_root "$NEW_ROOT" "$init" "$@"

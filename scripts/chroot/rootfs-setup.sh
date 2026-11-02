@@ -79,6 +79,9 @@ mkdir -p /etc/kernel
 cat >/etc/kernel/cmdline <<EOT
 root=PARTUUID=${ROOT_PARTUUID} rw rootwait rootfstype=ext4 quiet loglevel=3 video=efifb:off console=tty0 gpt ssbd=force-off kpti=off mitigations=off cgroup.memory=nokmem,nosocket nowatchdog vt.global_cursor_default=0 systemd.show_status=auto udev.log_level=3
 EOT
+# the initramfs records the root file system's UUID too (image.sh formats it
+# with this UUID), so that it finds this system whatever root= it is given
+export MANGMI_ROOT_FSUUID=${ROOT_FSUUID}
 if [[ ${DEFAULT_MODEL:-auto} != auto ]]; then
   mangmi-boot-update --model "${DEFAULT_MODEL}"
 else
