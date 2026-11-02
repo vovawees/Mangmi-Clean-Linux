@@ -22,8 +22,8 @@
 
 ## 1. Скачать образ
 
-Откройте [Releases](https://github.com/vovawees/Mangmi-Clean-Linux/releases) → **nightly**
-(или последнюю версию `v*`) и скачайте `mangmi-clean-linux-<версия>-full.img.xz` и файл `.sha256`.
+Откройте [Releases](https://github.com/vovawees/Mangmi-Clean-Linux/releases) → последнюю версию `v*`
+(или **nightly** — сборку ветки `main`) и скачайте `mangmi-clean-linux-<версия>-full.img.xz` и файл `.sha256`.
 Если образ разбит на части (`….img.xz.part00`, `….part01`), склейте их:
 `cat mangmi-clean-linux-*.img.xz.part* > mangmi.img.xz` (Windows: `copy /b файл.part00+файл.part01 mangmi.img.xz`).
 
