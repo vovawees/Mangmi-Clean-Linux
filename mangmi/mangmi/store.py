@@ -4,7 +4,7 @@
   mangmi-store             the store (free homebrew, ScummVM freeware,
                            your own HTTP folders and links)
   mangmi-store --wifi      only the Wi-Fi screen
-  mangmi-store --windowed  in a window (testing)
+  mangmi-store --windowed  in a resizable window
 
 A = choose / download, B = back, Y = search, X = delete, L1/R1 = page.
 Keyboard, mouse and touch work too. Games are saved to ~/ROMs/<system>/;
