@@ -179,6 +179,22 @@ fix_fstab() {
   fi
 }
 
+# mounted: a file system (not only an automount point) is mounted on ESP_DIR
+mounted() { findmnt -rn -o FSTYPE -M "$ESP_DIR" 2>/dev/null | grep -qvx autofs; }
+
+# no_automount: remove an automount point on ESP_DIR (the /etc/fstab of an
+# older version): going through it waits for the partition named in /etc/fstab
+no_automount() {
+  local unit
+  findmnt -rn -o FSTYPE -M "$ESP_DIR" 2>/dev/null | grep -qx autofs || return 0
+  if unit=$(systemd-escape -p --suffix=automount "$ESP_DIR" 2>/dev/null); then
+    systemctl stop "$unit" 2>/dev/null || :
+  fi
+  if findmnt -rn -o FSTYPE -M "$ESP_DIR" 2>/dev/null | grep -qx autofs; then
+    umount "$ESP_DIR" 2>/dev/null || umount -l "$ESP_DIR" 2>/dev/null || :
+  fi
+}
+
 lock() {
   mkdir -p "$RUN"
   exec 9>"$RUN/esp.lock"
@@ -194,12 +210,13 @@ cmd_find() {
 
 cmd_mount() {
   local root esp
-  mountpoint -q "$ESP_DIR" && return 0
+  mounted && return 0
   virtual && return 0
   root=$(root_dev)
   [[ -n $root ]] || return 0 # not on a block device: /boot is a directory
   lock
-  mountpoint -q "$ESP_DIR" && return 0
+  mounted && return 0
+  no_automount
   if ! esp=$(find_esp "$root"); then
     say "boot partition not found: no FAT partition of the EFI type or called MANGMI_BOOT"
     say "next to $root, and the one in $FSTAB ($(fstab_spec /boot || echo none)) is not there"
@@ -232,8 +249,9 @@ cmd_fstab() {
   virtual && return 0
   root=$(root_dev)
   [[ -n $root ]] || return 0
-  if mountpoint -q "$ESP_DIR"; then
-    esp=$(readlink -f "$(findmnt -nvo SOURCE "$ESP_DIR")")
+  if mounted; then
+    esp=$(findmnt -rn -o FSTYPE,SOURCE -M "$ESP_DIR" | awk '$1 != "autofs" { print $2; exit }')
+    esp=$(readlink -f "$esp")
     is_esp "$esp" || esp=""
   fi
   [[ -n $esp ]] || esp=$(find_esp "$root") || esp=""

@@ -18,11 +18,13 @@ t=$(mktemp -d)
 loops=()
 cleanup() {
   umount "$t/boot" 2>/dev/null || :
+  [[ -z ${waiter:-} ]] || kill "$waiter" 2>/dev/null || :
   for l in "${loops[@]}"; do losetup -d "$l" 2>/dev/null || :; done
   rm -rf "$t"
 }
 trap cleanup EXIT
 fail() { echo "esp: $*" >&2; exit 1; }
+mount_cmd=$(command -v mount)
 
 # mbr IMAGE SIGNATURE "start size type" ... : MBR entries next to the GPT
 mbr() {
@@ -133,4 +135,22 @@ mount --bind "$t/run" "$t/boot"
 run umount
 mountpoint -q "$t/boot" || fail "unmounted a mount it did not make"
 umount "$t/boot"
+
+# an automount point on /boot (the fstab of an older version) is taken away
+# and not gone through - that would wait for the partition named in fstab
+if grep -qw autofs /proc/filesystems; then
+  mkfifo "$t/autofs.pipe"
+  exec {afd}<>"$t/autofs.pipe"
+  setsid sleep 600 &
+  waiter=$!
+  "$mount_cmd" -t autofs -o "fd=$afd,pgrp=$waiter,minproto=5,maxproto=5,direct" mangmi-test "$t/boot"
+  findmnt -rn -o FSTYPE -M "$t/boot" | grep -qx autofs || fail "no automount point to test with"
+  MANGMI_ESP_ROOT=$root FSTAB=$t/fstab ESP_DIR=$t/boot MANGMI_ESP_RUN=$t/run \
+    timeout -s KILL 60 "$esp_cmd" mount || fail "mount over an automount point failed or hung"
+  findmnt -rn -o FSTYPE -M "$t/boot" | grep -qx autofs && fail "automount point left on /boot"
+  mountpoint -q "$t/boot" || fail "not mounted instead of the automount point"
+  run umount
+  mountpoint -q "$t/boot" && fail "still mounted (automount point)"
+  exec {afd}>&-
+fi
 echo "esp: ok"
