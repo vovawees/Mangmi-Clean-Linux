@@ -21,7 +21,7 @@ disable systemd-resolved*
 # not used on this device: no homed users, TPM, system/config extensions,
 # sysupdate, metrics/report endpoints or audit. OpenABL reads the boot
 # entries itself (there is no systemd-boot to update), so the ESP stays
-# unmounted during boot.
+# unmounted during boot (mangmi-esp mounts it for updates).
 disable systemd-homed*
 disable systemd-tpm2-clear.service
 disable systemd-sysext*

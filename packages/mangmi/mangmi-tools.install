@@ -7,6 +7,8 @@ post_install() {
 }
 
 post_upgrade() {
+  # systems installed before mangmi-esp: no /boot automount (from the next boot)
+  mangmi-esp fstab >/dev/null 2>&1 || :
   systemctl --global preset mangmi-hotkeyd.service >/dev/null 2>&1 || :
   systemctl try-restart mangmi-hwd.service >/dev/null 2>&1 || :
   udevadm control --reload >/dev/null 2>&1 || :

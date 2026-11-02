@@ -70,10 +70,15 @@ printf '[device]\nwifi.backend=iwd\n' >/etc/NetworkManager/conf.d/10-iwd.conf
 systemctl enable iwd.service >/dev/null 2>&1
 
 # --- storage and boot ----------------------------------------------------------------------------
+# The boot partition is not mounted during boot - no automount either: every
+# sandboxed service (ProtectSystem=) touches /boot, and if the partition is
+# not there each of them waits 90 s for it and fails (D-Bus first). mangmi-esp
+# mounts it for kernel updates, mangmi-boot-update and the first boot setup.
 cat >/etc/fstab <<EOT
 # <file system>              <dir>  <type> <options>                                         <dump> <pass>
 PARTUUID=${ROOT_PARTUUID}  /      ext4   rw,noatime,commit=30                               0      0
-PARTUUID=${ESP_PARTUUID}  /boot  vfat   rw,noatime,fmask=0022,dmask=0022,utf8,errors=remount-ro,noauto,x-systemd.automount,x-systemd.idle-timeout=60  0  2
+# boot partition (MANGMI_BOOT): mounted only when needed - sudo mangmi-esp mount
+PARTUUID=${ESP_PARTUUID}  /boot  vfat   rw,noatime,fmask=0022,dmask=0022,utf8,errors=remount-ro,noauto,nofail,x-systemd.device-timeout=5s  0  2
 EOT
 mkdir -p /etc/kernel
 cat >/etc/kernel/cmdline <<EOT
