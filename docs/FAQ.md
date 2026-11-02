@@ -31,6 +31,12 @@
 2) Эмулятор: ES-DE → меню системы → *Alternative emulators* — попробуйте другой.
 3) Лог: `~/ES-DE/logs/es_log.txt`.
 
+**Где взять игры? Как закинуть свои ROM без SFTP?**
+ES-DE → *Mangmi Air X* → **Game Store**: бесплатные homebrew-игры Game Boy / Color / Advance и квесты
+ScummVM скачиваются одной кнопкой. Свои дампы — с компьютера по Wi-Fi: в папке с играми на ПК выполните
+`python -m http.server 8000` и добавьте в магазине папку `http://<IP-компьютера>:8000/`
+(подробнее — [EMULATORS.md](EMULATORS.md#магазин-игр-game-store)). Wi-Fi настраивается там же.
+
 **Где сохранения?**
 RetroArch: `~/.config/retroarch/saves` и `states`; отдельные эмуляторы — в их каталогах в `~/.config`
 и `~/.local/share`. Скриншоты — `~/Pictures`.
