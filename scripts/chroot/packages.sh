@@ -14,6 +14,16 @@ ORDER=(qrtr pd-mapper rmtfs tqftpserv mangmi-firmware linux-mangmi mangmi
        es-de-bin duckstation-bin melonds-bin armsx2-bin mangmi-cores)
 (($#)) && ORDER=("$@")
 
+# linux-mangmi pkgrel: the number of commits that changed the kernel inputs
+# (patches, device trees, config, packaging). Device tree or config fixes on
+# the same upstream version then still reach devices through mangmi-update.
+if [[ -z "${MCL_KERNEL_PKGREL:-}" ]]; then
+  MCL_KERNEL_PKGREL="$(git -C /build/src rev-list --count HEAD -- kernel packages/linux-mangmi \
+    scripts/build-kernel.sh 2>/dev/null)" || MCL_KERNEL_PKGREL=""
+  [[ "${MCL_KERNEL_PKGREL}" =~ ^[1-9][0-9]*$ ]] || MCL_KERNEL_PKGREL=1
+fi
+export MCL_KERNEL_PKGREL
+
 mkdir -p "${REPO}/.stamps" "${PB}" /build/work/makepkg /build/cache/sources
 rsync -a --delete /build/src/packages/ "${PB}/"
 
