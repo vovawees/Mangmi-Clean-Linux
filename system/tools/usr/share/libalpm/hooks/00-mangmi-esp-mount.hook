@@ -1,0 +1,16 @@
+# The boot partition (kernel, device trees, boot entries) is not mounted during
+# boot: mount it on /boot before pacman changes files there - otherwise a
+# kernel update would land in the /boot directory of the root file system.
+# No boot partition: the transaction stops, the installed kernel stays usable.
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Target = boot/*
+
+[Action]
+Description = Mounting the boot partition...
+When = PreTransaction
+Exec = /usr/bin/mangmi-esp mount
+AbortOnFail

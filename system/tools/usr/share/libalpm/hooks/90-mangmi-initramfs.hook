@@ -1,5 +1,6 @@
 # Rebuild /boot/initramfs-mangmi.img and the boot entries when anything the
 # initramfs is made of changes (the kernel package does it on its own).
+# mangmi-boot-update mounts the boot partition itself if it is not mounted.
 [Trigger]
 Type = Path
 Operation = Install
@@ -17,4 +18,4 @@ Target = usr/bin/mangmi-initramfs
 [Action]
 Description = Updating the Mangmi initramfs and boot entries...
 When = PostTransaction
-Exec = /usr/bin/sh -c '[ -e /etc/kernel/cmdline ] && [ -e /boot/Image-mangmi ] || exit 0; exec /usr/bin/mangmi-boot-update'
+Exec = /usr/bin/sh -c '[ -e /etc/kernel/cmdline ] || exit 0; exec /usr/bin/mangmi-boot-update'

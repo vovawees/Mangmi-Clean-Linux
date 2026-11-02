@@ -1,0 +1,14 @@
+# Unmount the boot partition again once everything is written (after the boot
+# entries and the initramfs: 90-mangmi-initramfs.hook, the kernel package).
+# Only if 00-mangmi-esp-mount.hook mounted it.
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Target = boot/*
+
+[Action]
+Description = Unmounting the boot partition...
+When = PostTransaction
+Exec = /usr/bin/mangmi-esp umount
