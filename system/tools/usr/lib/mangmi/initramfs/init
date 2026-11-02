@@ -179,10 +179,23 @@ use_root() {
   return 1
 }
 
+# efivar NAME: a Boot Loader Interface variable of the boot loader (UTF-16 text)
+efivar() {
+  f=/sys/firmware/efi/efivars/$1-4a67b082-0a4c-41cf-b6c7-440b29bb8c4f
+  [ -r "$f" ] && dd if="$f" bs=4 skip=1 2>/dev/null | tr -d '\000'
+}
+
 rescue() {
   echo
   say "$*"
   echo "  Kernel command line: $cmdline"
+  ev=/sys/firmware/efi/efivars mounted=""
+  if [ -d $ev ] && [ -z "${MANGMI_INIT_TEST:-}" ] && ! mountpoint -q $ev; then
+    mount -t efivarfs -o ro,nosuid,nodev,noexec efivarfs $ev 2>/dev/null && mounted=1
+  fi
+  e=$(efivar LoaderEntrySelected) p=$(efivar LoaderDevicePartUUID)
+  [ -z "$mounted" ] || umount $ev
+  [ -z "$e$p" ] || echo "  Boot loader: entry ${e:-?} from partition ${p:-?}"
   echo "  Looked for: $(t=50; candidates | tr '\n' ' ')"
   echo "  Disks and partitions of 256 MiB and more:"
   small=0
