@@ -72,12 +72,14 @@ CROSS_COMPILE=aarch64-linux-gnu- ./scripts/build-kernel.sh   # результа�
 | `system/` | файлы системы по пакетам: `tools` (службы, udev, sysctl, звук, InputPlumber), `session` (режимы), `emulators` |
 | `config/packages/*.list` | состав образа: `base`, `console`, `emulators`, `desktop` |
 | `overlay/esp/` | файлы загрузочного раздела (`mangmi-setup.txt`, скрипты OpenABL) |
-| `tests/` | тесты генератора загрузочных записей |
+| `tests/` | тесты загрузочных записей, initramfs и поиска загрузочного раздела |
 
 ## Тесты
 
 ```sh
 (cd mangmi && python3 -m unittest discover -s tests -v)
 bash tests/boot-update.sh
+sudo bash tests/initramfs.sh   # нужны root и loop-устройства
+sudo bash tests/esp.sh         # загрузочный раздел: поиск, fstab, подключение
 shellcheck -S warning build.sh scripts/*.sh scripts/chroot/*.sh
 ```
